@@ -1,0 +1,9 @@
+{
+  "_comment": "Minimal fixed-schema JSON-object grammar for Phase 1-2. Finite, so L is fully enumerable and exact p* is computable. Fields emit in a fixed order; each value is drawn from a finite enum -> every action is deterministic or finite.",
+  "field_order": ["status", "priority", "approved"],
+  "fields": {
+    "status": { "kind": "finite", "enum": ["open", "closed", "pending"] },
+    "priority": { "kind": "finite", "enum": ["low", "medium", "high"] },
+    "approved": { "kind": "finite", "enum": ["true", "false"] }
+  }
+}
