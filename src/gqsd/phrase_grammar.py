@@ -70,6 +70,40 @@ class PhraseGrammar:
                 )
         return ["".join(parts) for parts in product(*alternatives)]
 
+    def coalesce_literals(self) -> PhraseGrammar:
+        """Fold each deterministic literal into the following action realizations.
+
+        BPE tokenizers commonly merge trailing whitespace or punctuation with
+        the first token of the next phrase. Moving that literal into the action
+        keeps the generated language unchanged while placing the grammar
+        boundary before the tokenizer merge.
+        """
+        segments: list[Segment] = []
+        pending_literal = ""
+        for segment in self.segments:
+            if isinstance(segment, Literal):
+                pending_literal += segment.text
+                continue
+            if pending_literal:
+                segment = Slot(
+                    name=segment.name,
+                    choices=tuple(
+                        Choice(
+                            label=choice.label,
+                            realizations=tuple(
+                                pending_literal + realization
+                                for realization in choice.realizations
+                            ),
+                        )
+                        for choice in segment.choices
+                    ),
+                )
+                pending_literal = ""
+            segments.append(segment)
+        if pending_literal:
+            segments.append(Literal(pending_literal))
+        return PhraseGrammar(name=self.name, segments=tuple(segments))
+
     @classmethod
     def from_dict(cls, spec: dict[str, Any]) -> PhraseGrammar:
         segments: list[Segment] = []

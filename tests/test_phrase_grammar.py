@@ -53,6 +53,19 @@ def test_state_enumeration_matches_cartesian_language():
     assert len(direct) == 6
 
 
+def test_coalescing_literals_preserves_language_and_moves_first_choice_forward():
+    grammar = _report_grammar()
+    coalesced = grammar.coalesce_literals()
+    assert sorted(coalesced.enumerate()) == sorted(grammar.enumerate())
+    assert [action.label for action in coalesced.start().actions()] == [
+        "finding:stable",
+        "finding:degraded",
+    ]
+    assert coalesced.start().actions()[0].realizations == (
+        "Assessment: the service remained stable",
+    )
+
+
 def test_state_rejects_wrong_action_or_realization():
     state = _report_grammar().start()
     action = state.actions()[0]
