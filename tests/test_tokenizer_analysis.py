@@ -2,6 +2,7 @@ import pytest
 
 from gqsd.phrase_grammar import Choice, Literal, PhraseGrammar, Slot
 from gqsd.tokenizer_analysis import (
+    TokenFrontier,
     analyze_boundary,
     mismatch_summary,
     plan_boundary_repair,
@@ -111,3 +112,24 @@ def test_boundary_repair_rejects_insufficient_pending_budget():
 def test_summary_rejects_negative_pending_budget():
     with pytest.raises(ValueError, match="must be nonnegative"):
         mismatch_summary([], pending_token_budget=-1)
+
+
+def test_pending_frontier_reclaims_merge_and_emits_canonical_tokens():
+    frontier = TokenFrontier(MergeTokenizer(), pending_token_budget=1)
+    first = frontier.append("a")
+    assert first.emitted_ids == ()
+    assert first.pending_ids == (1,)
+
+    second = frontier.append("b")
+    assert second.reclaimed_boundary is True
+    assert second.discarded_pending_ids == (1,)
+    assert second.canonical_ids == (3,)
+    assert frontier.finalize() == (3,)
+    assert frontier.canonical_ids == (3,)
+
+
+def test_pending_frontier_rejects_merge_after_token_was_committed():
+    frontier = TokenFrontier(MergeTokenizer(), pending_token_budget=0)
+    frontier.append("a")
+    with pytest.raises(ValueError, match="only 0 are available"):
+        frontier.append("b")

@@ -71,6 +71,78 @@ class BoundaryRepair:
         return self.committed_prefix_ids + self.replacement_ids
 
 
+@dataclass(frozen=True)
+class FrontierUpdate:
+    """Token emission and repair metadata for one accepted text action."""
+
+    emitted_ids: tuple[int, ...]
+    discarded_pending_ids: tuple[int, ...]
+    pending_ids: tuple[int, ...]
+    canonical_ids: tuple[int, ...]
+
+    @property
+    def reclaimed_boundary(self) -> bool:
+        return bool(self.discarded_pending_ids)
+
+
+@dataclass
+class TokenFrontier:
+    """Keep a suffix uncommitted so the next action may retokenize its boundary."""
+
+    tokenizer: Tokenizer
+    pending_token_budget: int = 1
+    text: str = ""
+    committed_ids: tuple[int, ...] = ()
+    pending_ids: tuple[int, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.pending_token_budget < 0:
+            raise ValueError("Pending token budget must be nonnegative")
+
+    @property
+    def canonical_ids(self) -> tuple[int, ...]:
+        return self.committed_ids + self.pending_ids
+
+    def append(self, realization: str) -> FrontierUpdate:
+        """Accept text, retokenize canonically, and emit all but the pending suffix."""
+        previous_ids = self.canonical_ids
+        joint_ids = _encode(self.tokenizer, self.text + realization)
+        common = 0
+        for previous_id, joint_id in zip(previous_ids, joint_ids, strict=False):
+            if previous_id != joint_id:
+                break
+            common += 1
+        rollback = len(previous_ids) - common
+        if common < len(self.committed_ids) or rollback > len(self.pending_ids):
+            raise ValueError(
+                f"Boundary repair needs {rollback} pending tokens, "
+                f"only {len(self.pending_ids)} are available"
+            )
+
+        pending_count = min(self.pending_token_budget, len(joint_ids))
+        new_committed = joint_ids[: len(joint_ids) - pending_count]
+        new_pending = joint_ids[len(joint_ids) - pending_count :]
+        emitted = new_committed[len(self.committed_ids) :]
+        discarded = previous_ids[common:]
+
+        self.text += realization
+        self.committed_ids = new_committed
+        self.pending_ids = new_pending
+        return FrontierUpdate(
+            emitted_ids=emitted,
+            discarded_pending_ids=discarded,
+            pending_ids=new_pending,
+            canonical_ids=joint_ids,
+        )
+
+    def finalize(self) -> tuple[int, ...]:
+        """Commit and return the remaining suffix at the grammar accepting state."""
+        final = self.pending_ids
+        self.committed_ids += final
+        self.pending_ids = ()
+        return final
+
+
 def plan_boundary_repair(
     record: TokenizationRecord, *, pending_token_budget: int
 ) -> BoundaryRepair:
