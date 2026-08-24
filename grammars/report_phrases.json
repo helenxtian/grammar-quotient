@@ -1,0 +1,36 @@
+{
+  "name": "controlled_incident_report",
+  "segments": [
+    {"literal": "Assessment: "},
+    {
+      "slot": "system",
+      "choices": [
+        {"label": "checkout", "realizations": ["the checkout service", "checkout"]},
+        {"label": "search", "realizations": ["the search endpoint", "search"]},
+        {"label": "worker", "realizations": ["the background worker", "the job runner"]}
+      ]
+    },
+    {
+      "slot": "finding",
+      "choices": [
+        {"label": "stable", "realizations": [" remained stable", " operated normally"]},
+        {"label": "latency", "realizations": [" showed elevated latency", " responded more slowly than usual"]},
+        {"label": "errors", "realizations": [" returned intermittent errors", " experienced sporadic failures"]}
+      ]
+    },
+    {
+      "slot": "evidence",
+      "choices": [
+        {"label": "omitted", "realizations": [""]},
+        {"label": "logs", "realizations": [", according to application logs", ", based on the latest traces"]}
+      ]
+    },
+    {
+      "slot": "recommendation",
+      "choices": [
+        {"label": "monitor", "realizations": [". Continue monitoring.", ". Ongoing observation is recommended."]},
+        {"label": "investigate", "realizations": [". Investigate the affected path.", ". Review the recent deployment."]}
+      ]
+    }
+  ]
+}

@@ -5,12 +5,13 @@ JSON-object grammar -- NOT a general CFG engine. In this regime every action is
 deterministic or finite, so action masses Sigma_{s in C} p(s | u) are computable
 exactly, which is what the correctness experiments need.
 
-This module is a stub: the interfaces below define the contract the rest of the
-system codes against. Phase 2 fills in the JSON-object implementation.
+The base state is intentionally grammar-agnostic. Concrete grammars expose a
+finite set of competing actions and advance immutably after a realization.
 """
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 
@@ -34,21 +35,30 @@ class Action:
     label: str
     realizations: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        if not self.label:
+            raise ValueError("Action label cannot be empty")
+        if self.kind is ActionKind.OPEN and self.realizations:
+            raise ValueError("Open actions cannot enumerate realizations")
+        if self.kind is not ActionKind.OPEN and not self.realizations:
+            raise ValueError("Finite and deterministic actions need realizations")
+        if self.kind is ActionKind.DETERMINISTIC and len(self.realizations) != 1:
+            raise ValueError("Deterministic actions need exactly one realization")
+        if len(set(self.realizations)) != len(self.realizations):
+            raise ValueError("Action realizations must be unique")
 
-class GrammarState:
-    """Opaque grammar state g. Knows which actions are permitted next.
 
-    TODO(phase-2): implement for the fixed-schema JSON object grammar.
-    """
+class GrammarState(ABC):
+    """Opaque immutable grammar state that owns the next action partition."""
 
+    @abstractmethod
     def actions(self) -> list[Action]:
         """Return C(g): the macro actions permitted from this state."""
-        raise NotImplementedError("phase 2: JSON-object grammar")
 
-    def advance(self, action: Action, realization: str) -> "GrammarState":
+    @abstractmethod
+    def advance(self, action: Action, realization: str) -> GrammarState:
         """Return g' after committing to `action` realized as `realization`."""
-        raise NotImplementedError("phase 2: JSON-object grammar")
 
+    @abstractmethod
     def is_accepting(self) -> bool:
         """True if the string built so far is a complete valid member of L."""
-        raise NotImplementedError("phase 2: JSON-object grammar")

@@ -1,0 +1,30 @@
+{
+  "name": "bounded_support_dialogue",
+  "segments": [
+    {"literal": "User: "},
+    {
+      "slot": "request",
+      "choices": [
+        {"label": "status", "realizations": ["Can you check the service status?", "Is the service currently available?"]},
+        {"label": "explain", "realizations": ["Why did the request fail?", "What caused the failure?"]},
+        {"label": "next_steps", "realizations": ["What should I try next?", "How can I resolve this?"]}
+      ]
+    },
+    {"literal": "\nAssistant: "},
+    {
+      "slot": "response_strategy",
+      "choices": [
+        {"label": "answer", "realizations": ["The service is available now.", "The latest check completed successfully."]},
+        {"label": "clarify", "realizations": ["Which request identifier did you use?", "Could you share the error message?"]},
+        {"label": "guide", "realizations": ["Retry once, then review the request logs.", "Check the connection and submit the request again."]}
+      ]
+    },
+    {
+      "slot": "closing",
+      "choices": [
+        {"label": "none", "realizations": [""]},
+        {"label": "offer", "realizations": [" I can help interpret the result.", " I can walk through the next step."]}
+      ]
+    }
+  ]
+}

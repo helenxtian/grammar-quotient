@@ -1,0 +1,38 @@
+{
+  "name": "python_function_with_docstring",
+  "segments": [
+    {"literal": "def "},
+    {
+      "slot": "function",
+      "choices": [
+        {"label": "normalize", "realizations": ["normalize_scores", "normalize_values"]},
+        {"label": "filter", "realizations": ["filter_active_items", "select_active_records"]},
+        {"label": "summarize", "realizations": ["summarize_results", "build_summary"]}
+      ]
+    },
+    {
+      "slot": "signature",
+      "choices": [
+        {"label": "sequence", "realizations": ["(values: list[float]) -> list[float]:", "(items: list[str]) -> list[str]:"]},
+        {"label": "mapping", "realizations": ["(records: dict[str, float]) -> dict[str, float]:", "(data: dict[str, str]) -> dict[str, str]:"]}
+      ]
+    },
+    {"literal": "\n    \"\"\""},
+    {
+      "slot": "docstring",
+      "choices": [
+        {"label": "transform", "realizations": ["Transform the supplied values without mutating the input.", "Return a transformed copy of the supplied collection."]},
+        {"label": "filter", "realizations": ["Keep only entries that satisfy the active-state requirement.", "Return the entries eligible for further processing."]},
+        {"label": "summary", "realizations": ["Build a concise summary from the available results.", "Summarize the provided results for downstream use."]}
+      ]
+    },
+    {"literal": "\"\"\"\n    "},
+    {
+      "slot": "body",
+      "choices": [
+        {"label": "comprehension", "realizations": ["return [value for value in values]", "return [item for item in items]"]},
+        {"label": "copy", "realizations": ["return records.copy()", "return data.copy()"]}
+      ]
+    }
+  ]
+}
