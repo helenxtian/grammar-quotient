@@ -7,6 +7,7 @@ verification) is built on the primitives exposed here.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import torch
@@ -30,7 +31,7 @@ class LM:
     device: str
 
     @classmethod
-    def load(cls, model_id: str = DEFAULT_MODEL, device: str | None = None) -> "LM":
+    def load(cls, model_id: str = DEFAULT_MODEL, device: str | None = None) -> LM:
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         tok = AutoTokenizer.from_pretrained(model_id)
         model = AutoModelForCausalLM.from_pretrained(
@@ -41,10 +42,19 @@ class LM:
         return cls(tokenizer=tok, model=model, device=device)
 
     def encode(self, text: str) -> list[int]:
-        return self.tokenizer.encode(text)
+        return self.tokenizer.encode(text, add_special_tokens=False)
 
     def decode(self, ids: list[int]) -> str:
         return self.tokenizer.decode(ids)
+
+    def initial_context_ids(self) -> list[int]:
+        """Return a single model token that can predict the first output token."""
+        token_id = self.tokenizer.bos_token_id
+        if token_id is None:
+            token_id = self.tokenizer.eos_token_id
+        if token_id is None:
+            raise ValueError("Tokenizer needs a BOS or EOS token to score an empty prefix")
+        return [token_id]
 
     @torch.no_grad()
     def next_token_logprobs(self, input_ids: list[int]) -> torch.Tensor:
@@ -62,11 +72,30 @@ class LM:
         """
         if not cont_ids:
             return 0.0
-        ids = torch.tensor([prefix_ids + cont_ids], device=self.device)
+        context_ids = prefix_ids or self.initial_context_ids()
+        ids = torch.tensor([context_ids + cont_ids], device=self.device)
         logits = self.model(ids).logits[0]  # [seq, vocab]
         logprobs = torch.log_softmax(logits.float(), dim=-1)
         total = 0.0
-        start = len(prefix_ids) - 1  # logits at position t predict token t+1
+        start = len(context_ids) - 1  # logits at position t predict token t+1
         for k, tok in enumerate(cont_ids):
             total += logprobs[start + k, tok].item()
         return total
+
+    def text_logprob(self, prefix: str, continuation: str) -> float:
+        """Return log p(continuation | prefix) under canonical joint tokenization.
+
+        A text boundary is scoreable as a token continuation only when encoding
+        ``prefix + continuation`` preserves the tokenization of ``prefix``.
+        Callers must choose an earlier grammar boundary when a tokenizer merge
+        crosses the requested boundary.
+        """
+        prefix_ids = self.encode(prefix)
+        joint_ids = self.encode(prefix + continuation)
+        if joint_ids[: len(prefix_ids)] != prefix_ids:
+            raise ValueError("Prefix/continuation boundary is not tokenization-stable")
+        return self.sequence_logprob(prefix_ids, joint_ids[len(prefix_ids) :])
+
+    def batch_text_logprobs(self, prefix: str, continuations: Iterable[str]) -> list[float]:
+        """Score finite grammar realizations against the same text prefix."""
+        return [self.text_logprob(prefix, continuation) for continuation in continuations]
