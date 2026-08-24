@@ -52,15 +52,31 @@ class FiniteGrammarOracle:
     """Exact target and quotient conditionals for an enumerable phrase grammar."""
 
     grammar: PhraseGrammar
-    sequence_logprob: Callable[[str], float]
+    sequence_logprob: Callable[[str], float] | None = None
+    logprobs: dict[str, float] = field(default_factory=dict)
     _completion_cache: dict[PhraseState, float] = field(default_factory=dict, init=False)
+    p_star: dict[str, float] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         strings = self.grammar.enumerate()
         if len(strings) != len(set(strings)):
             raise ValueError("Grammar paths must produce unique terminal strings")
-        self.logprobs = {text: self.sequence_logprob(text) for text in strings}
+        if not self.logprobs:
+            if self.sequence_logprob is None:
+                raise ValueError("Provide a sequence scorer or precomputed log-probabilities")
+            self.logprobs = {text: self.sequence_logprob(text) for text in strings}
+        if set(self.logprobs) != set(strings):
+            raise ValueError("Precomputed log-probabilities must cover the grammar language")
         self.p_star = _normalize_logweights(self.logprobs)
+
+    @classmethod
+    def from_lm(
+        cls, grammar: PhraseGrammar, lm: LM, *, batch_size: int = 8
+    ) -> FiniteGrammarOracle:
+        """Build an exact oracle with bounded padded target-model batches."""
+        strings = grammar.enumerate()
+        scores = lm.batch_text_logprobs("", strings, batch_size=batch_size)
+        return cls(grammar=grammar, logprobs=dict(zip(strings, scores, strict=True)))
 
     def completion_logmass(self, state: PhraseState) -> float:
         """Unnormalized model mass of all valid terminal strings below state."""

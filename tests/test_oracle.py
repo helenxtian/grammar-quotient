@@ -1,5 +1,7 @@
 import math
 
+import pytest
+
 from gqsd.oracle import FiniteGrammarOracle
 from gqsd.phrase_grammar import Choice, Literal, PhraseGrammar, Slot
 
@@ -53,3 +55,15 @@ def test_action_and_realization_distributions_are_nontrivial_and_normalized():
     realizations = oracle.realization_distribution(state, success)
     assert set(realizations) == {"passed", "succeeded"}
     assert math.isclose(sum(realizations.values()), 1.0, abs_tol=1e-12)
+
+
+def test_oracle_accepts_complete_precomputed_logprobs():
+    grammar = _grammar()
+    logprobs = {text: _logprob(text) for text in grammar.enumerate()}
+    oracle = FiniteGrammarOracle(grammar=grammar, logprobs=logprobs)
+    assert oracle.logprobs == logprobs
+
+
+def test_oracle_rejects_incomplete_precomputed_logprobs():
+    with pytest.raises(ValueError, match="must cover"):
+        FiniteGrammarOracle(grammar=_grammar(), logprobs={"missing": -1.0})

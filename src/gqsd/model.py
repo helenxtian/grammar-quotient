@@ -31,12 +31,25 @@ class LM:
     device: str
 
     @classmethod
-    def load(cls, model_id: str = DEFAULT_MODEL, device: str | None = None) -> LM:
+    def load(
+        cls,
+        model_id: str = DEFAULT_MODEL,
+        device: str | None = None,
+        *,
+        revision: str | None = None,
+        local_files_only: bool = False,
+    ) -> LM:
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        tok = AutoTokenizer.from_pretrained(model_id)
+        tok = AutoTokenizer.from_pretrained(
+            model_id,
+            revision=revision,
+            local_files_only=local_files_only,
+        )
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.float32 if device == "cpu" else torch.float16,
+            revision=revision,
+            local_files_only=local_files_only,
+            dtype=torch.float32 if device == "cpu" else torch.float16,
         ).to(device)
         model.eval()
         return cls(tokenizer=tok, model=model, device=device)
@@ -96,6 +109,61 @@ class LM:
             raise ValueError("Prefix/continuation boundary is not tokenization-stable")
         return self.sequence_logprob(prefix_ids, joint_ids[len(prefix_ids) :])
 
-    def batch_text_logprobs(self, prefix: str, continuations: Iterable[str]) -> list[float]:
+    def batch_text_logprobs(
+        self, prefix: str, continuations: Iterable[str], *, batch_size: int = 8
+    ) -> list[float]:
         """Score finite grammar realizations against the same text prefix."""
-        return [self.text_logprob(prefix, continuation) for continuation in continuations]
+        if batch_size <= 0:
+            raise ValueError("Batch size must be positive")
+        examples: list[tuple[list[int], list[int]]] = []
+        prefix_ids = self.encode(prefix)
+        for continuation in continuations:
+            joint_ids = self.encode(prefix + continuation)
+            if joint_ids[: len(prefix_ids)] != prefix_ids:
+                raise ValueError("Prefix/continuation boundary is not tokenization-stable")
+            examples.append((prefix_ids, joint_ids[len(prefix_ids) :]))
+        scores: list[float] = []
+        for start in range(0, len(examples), batch_size):
+            scores.extend(self._batch_sequence_logprobs(examples[start : start + batch_size]))
+        return scores
+
+    @torch.no_grad()
+    def _batch_sequence_logprobs(
+        self, examples: list[tuple[list[int], list[int]]]
+    ) -> list[float]:
+        if not examples:
+            return []
+        rows: list[list[int]] = []
+        starts: list[int] = []
+        continuation_lengths: list[int] = []
+        for prefix_ids, continuation_ids in examples:
+            context_ids = prefix_ids or self.initial_context_ids()
+            rows.append(context_ids + continuation_ids)
+            starts.append(len(context_ids) - 1)
+            continuation_lengths.append(len(continuation_ids))
+
+        pad_token_id = self.tokenizer.pad_token_id
+        if pad_token_id is None:
+            pad_token_id = self.tokenizer.eos_token_id
+        if pad_token_id is None:
+            pad_token_id = self.tokenizer.bos_token_id
+        if pad_token_id is None:
+            raise ValueError("Tokenizer needs a padding, EOS, or BOS token for batched scoring")
+
+        max_length = max(len(row) for row in rows)
+        padded = [row + [pad_token_id] * (max_length - len(row)) for row in rows]
+        masks = [[1] * len(row) + [0] * (max_length - len(row)) for row in rows]
+        ids = torch.tensor(padded, device=self.device)
+        attention_mask = torch.tensor(masks, device=self.device)
+        logits = self.model(ids, attention_mask=attention_mask).logits
+        logprobs = torch.log_softmax(logits.float(), dim=-1)
+
+        totals: list[float] = []
+        for row_index, ((_, continuation_ids), start, length) in enumerate(
+            zip(examples, starts, continuation_lengths, strict=True)
+        ):
+            total = 0.0
+            for offset, token_id in enumerate(continuation_ids[:length]):
+                total += logprobs[row_index, start + offset, token_id].item()
+            totals.append(total)
+        return totals

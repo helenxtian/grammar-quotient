@@ -9,6 +9,7 @@ from gqsd.model import LM
 class FakeTokenizer:
     bos_token_id = 0
     eos_token_id = 4
+    pad_token_id = 4
 
     def encode(self, text, add_special_tokens=False):
         assert add_special_tokens is False
@@ -21,7 +22,7 @@ class FakeTokenizer:
 
 
 class FakeModel:
-    def __call__(self, ids):
+    def __call__(self, ids, attention_mask=None):
         batch, length = ids.shape
         logits = torch.full((batch, length, 5), -20.0)
         logits[:, :, 1] = 2.0
@@ -46,6 +47,14 @@ def test_text_logprob_rejects_cross_boundary_token_merge():
 
 
 def test_batch_text_logprobs_scores_stable_realizations():
-    scores = _lm().batch_text_logprobs("", ["a", "b"])
+    scores = _lm().batch_text_logprobs("", ["a", "b"], batch_size=1)
     assert len(scores) == 2
     assert scores[0] > scores[1]
+    assert scores == pytest.approx(
+        [_lm().text_logprob("", "a"), _lm().text_logprob("", "b")]
+    )
+
+
+def test_batch_text_logprobs_rejects_nonpositive_batch_size():
+    with pytest.raises(ValueError, match="must be positive"):
+        _lm().batch_text_logprobs("", ["a"], batch_size=0)
