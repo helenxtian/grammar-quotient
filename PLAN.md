@@ -19,20 +19,20 @@ quotient sampler provably hit `p*`?*
 - [ ] Unconstrained sampling from `p` (`baselines.sample_unconstrained`)
 - [ ] Token-level masked decoding — the biased baseline
       (`baselines.sample_token_masked`)
-- [ ] Brute-force exact `p*` oracle over the toy grammar (`oracle.py`)
+- [x] Brute-force exact `p*` oracle over finite grammars (`oracle.py`)
 - [ ] First experiment: show masked decoding ≠ `p*` (TV/KL gap) on the toy schema
 
 ## Phase 2 — Quotient mechanics (no speculation)
-- [ ] JSON-object `GrammarState`: `actions()`, `advance()`, `is_accepting()`
-- [ ] Exact action mass `Σ_{s∈C} p(s|u)` via per-realization scoring
+- [x] Finite phrase `GrammarState`: `actions()`, `advance()`, `is_accepting()`
+- [x] Exact action and realization mass via finite-language lookahead
 - [ ] `Φ` handling — pick the rung:
       (a) `Φ≡1` stepping stone, (b) exact `Φ` from the oracle, (c) approx later
-- [ ] **Validation gate:** quotient sampler with exact `Φ` matches the `p*` oracle
-      in KL/TV. If not, the theorem implementation is wrong.
+- [x] **Synthetic validation gate:** analytic quotient factorization matches the
+      exact finite-language `p*` oracle. Qwen-backed validation remains open.
 
 ## Phase 3 — Speculation
 - [ ] Cheap draft `q_Q` over actions
-- [ ] Acceptance rule `α = min(1, π_p*/π_q*)`
+- [x] Finite-support acceptance rule plus exact positive-residual correction
 - [ ] Re-run the KL-to-oracle gate with speculation ON (must still match)
 - [ ] Measure tokens-accepted-per-target-call vs. token-level speculative
 
@@ -46,3 +46,12 @@ quotient sampler provably hit `p*`?*
 - [ ] Formal proof of the Phase-2 factorization; should agree with the KL test
 - [ ] Characterize the target under **approximate** `Φ` — decide the framing:
       "exactly correct given a `Φ` oracle" vs. "correct + tractable `Φ` approx".
+
+## Current implementation note
+
+The repository now includes exactly enumerable phrase grammars for controlled
+reports, dialogue, and Python code/docstrings. These establish non-vacuous,
+competing grammar actions while keeping exact terminal normalization possible.
+Real Qwen scoring, tokenizer-mismatch instrumentation and reclamation, an
+integrated action draft loop, approximate `Φ`, and performance evaluation are
+still required before the stronger project claims are supported.

@@ -213,5 +213,14 @@ actions rather than individual tokens. If successful, it provides a new path to
 
 ## Status
 
-Early-stage research proposal. See the project plan for the roadmap from theory
-to prototype to evaluation.
+Early-stage research prototype. Implemented foundations include:
+
+- the original exact synthetic-character correctness harness;
+- finite phrase grammars with competing macro actions for reports, dialogue,
+  and Python code/docstrings;
+- an exact finite-language oracle and analytic quotient factorization; and
+- finite-support speculative acceptance with positive-residual correction.
+
+Real Qwen-backed quotient decoding, cross-tokenization mismatch reclamation,
+approximate-future-validity analysis, and latency evaluation remain in progress.
+See the project plan for the validation gates.
