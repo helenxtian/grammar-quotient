@@ -37,7 +37,12 @@ quotient sampler provably hit `p*`?*
 - [x] Re-run sampled TV-to-oracle gate with speculation ON
 - [x] Integrate one-token pending frontier; reclaim 300 boundaries across 100
       Qwen-backed dialogue samples that strict immediate commitment rejects
-- [ ] Measure tokens-accepted-per-target-call vs. token-level speculative
+- [x] Online local-target benchmark: batch competing action realizations in one
+      target call and compare against token-trie speculative verification
+- [x] Measure target calls, accepted/output tokens per call, and CPU latency:
+      50 vs. 227 calls and 13.94s vs. 36.50s over 10 dialogue samples
+- [ ] Add online `Phi` estimation/correction so action verification targets the
+      exact or explicitly approximated grammar-conditioned distribution
 
 ## Phase 4 — Scale + evaluation
 - [ ] Nested JSON, tool-call schemas, SQL-over-fixed-schema, enum-heavy outputs
@@ -57,8 +62,15 @@ reports, dialogue, and Python code/docstrings. These establish non-vacuous,
 competing grammar actions while keeping exact terminal normalization possible.
 Real Qwen scoring, tokenizer-mismatch instrumentation, a uniform action draft
 loop, and pending-token reclamation are now integrated for the finite dialogue
-benchmark. Approximate `Φ`, online target verification, and performance
-evaluation remain required before speed claims are supported.
+benchmark. Approximate `Φ`, online verification of `p*`, accelerator benchmarks,
+and broader performance evaluation remain required before general speed or
+faithfulness claims are supported.
+
+Online local-target verification is now also implemented. On the pinned
+10-sample CPU run, action batching used 4.54x fewer target forwards and 2.62x
+lower latency than token-trie verification. This comparison does not use exact
+future validity: action and token modes target their respective locally
+normalized distributions, so exact online faithfulness to `p*` remains open.
 
 Tokenizer-boundary instrumentation is now implemented and validated against
 Qwen/Qwen2.5-0.5B revision `060db6499f32faf8b98477b0a26969ef7d8b9987`.

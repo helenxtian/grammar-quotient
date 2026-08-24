@@ -225,9 +225,10 @@ Early-stage research prototype. Implemented foundations include:
 - Qwen-backed exact-oracle quotient sampling over the 108-string dialogue
    benchmark.
 
-Online target verification, approximate-future-validity analysis, and a fair
-target-call/latency comparison remain in progress. See the project plan for the
-validation gates.
+Online local-target verification and an action-vs-token systems comparison are
+implemented. Approximate-future-validity analysis and online verification of
+the exact grammar-conditioned target remain in progress. See the project plan
+for the validation gates.
 
 ### Tokenizer-boundary instrumentation
 
@@ -274,4 +275,41 @@ immediately rejected all 100 corresponding attempts at unstable boundaries.
 
 This is an end-to-end finite-oracle reclamation result, not yet a production
 speculative decoder: target probabilities are precomputed by exhaustive scoring,
-and no reduction in online target-model calls or latency has been demonstrated.
+so that experiment alone does not measure online target calls or latency. The
+separate online benchmark below addresses the local-target systems comparison.
+
+### Online action-vs-token verification
+
+The online benchmark avoids exhaustive language scoring. At each grammar state,
+action mode batches all competing realizations into one target forward pass;
+token mode traverses the same candidate set through masked next-token decisions.
+Both retain one pending token for boundary repair.
+
+```bash
+python -m gqsd.evaluate_online grammars/dialogue_phrases.json \
+   --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
+   --local-files-only \
+   --samples 10 \
+   --seed 20260824
+```
+
+Pinned Qwen CPU results:
+
+| Metric | Action | Token |
+|---|---:|---:|
+| Valid canonical outputs | 10/10 | 10/10 |
+| Target forward passes | 50 | 227 |
+| Calls per sample | 5.0 | 22.7 |
+| Accepted tokens per call | 2.18 | 0.934 |
+| Output tokens per call | 3.38 | 0.780 |
+| Total latency | 13.94 s | 36.50 s |
+| Reclaimed boundaries | 30 | 30 |
+
+Action verification used 4.54x fewer target calls and measured 2.62x lower
+latency in this run. These are small CPU benchmark results, not production
+throughput claims; larger repeated runs and accelerator measurements remain.
+
+The targets also differ intentionally. Action mode normalizes base-model
+sequence mass over the current grammar realizations, while token mode performs
+standard local next-token masking. Without an online future-validity term
+`Phi`, neither comparison establishes exact preservation of `p(w | w in L)`.
