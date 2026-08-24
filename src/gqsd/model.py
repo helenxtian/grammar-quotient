@@ -29,6 +29,7 @@ class LM:
     tokenizer: AutoTokenizer
     model: AutoModelForCausalLM
     device: str
+    target_forward_passes: int = 0
 
     @classmethod
     def load(
@@ -69,11 +70,21 @@ class LM:
             raise ValueError("Tokenizer needs a BOS or EOS token to score an empty prefix")
         return [token_id]
 
+    def reset_counters(self) -> None:
+        self.target_forward_passes = 0
+
+    def _forward(self, ids: torch.Tensor, attention_mask: torch.Tensor | None = None):
+        self.target_forward_passes += 1
+        if attention_mask is None:
+            return self.model(ids)
+        return self.model(ids, attention_mask=attention_mask)
+
     @torch.no_grad()
     def next_token_logprobs(self, input_ids: list[int]) -> torch.Tensor:
         """Log p(. | input_ids) over the full vocab, shape [vocab]."""
-        ids = torch.tensor([input_ids], device=self.device)
-        logits = self.model(ids).logits[0, -1]  # [vocab]
+        context_ids = input_ids or self.initial_context_ids()
+        ids = torch.tensor([context_ids], device=self.device)
+        logits = self._forward(ids).logits[0, -1]  # [vocab]
         return torch.log_softmax(logits.float(), dim=-1)
 
     @torch.no_grad()
@@ -87,7 +98,7 @@ class LM:
             return 0.0
         context_ids = prefix_ids or self.initial_context_ids()
         ids = torch.tensor([context_ids + cont_ids], device=self.device)
-        logits = self.model(ids).logits[0]  # [seq, vocab]
+        logits = self._forward(ids).logits[0]  # [seq, vocab]
         logprobs = torch.log_softmax(logits.float(), dim=-1)
         total = 0.0
         start = len(context_ids) - 1  # logits at position t predict token t+1
@@ -124,11 +135,13 @@ class LM:
             examples.append((prefix_ids, joint_ids[len(prefix_ids) :]))
         scores: list[float] = []
         for start in range(0, len(examples), batch_size):
-            scores.extend(self._batch_sequence_logprobs(examples[start : start + batch_size]))
+            scores.extend(
+                self.batch_sequence_logprobs(examples[start : start + batch_size])
+            )
         return scores
 
     @torch.no_grad()
-    def _batch_sequence_logprobs(
+    def batch_sequence_logprobs(
         self, examples: list[tuple[list[int], list[int]]]
     ) -> list[float]:
         if not examples:
@@ -155,7 +168,7 @@ class LM:
         masks = [[1] * len(row) + [0] * (max_length - len(row)) for row in rows]
         ids = torch.tensor(padded, device=self.device)
         attention_mask = torch.tensor(masks, device=self.device)
-        logits = self.model(ids, attention_mask=attention_mask).logits
+        logits = self._forward(ids, attention_mask=attention_mask).logits
         logprobs = torch.log_softmax(logits.float(), dim=-1)
 
         totals: list[float] = []

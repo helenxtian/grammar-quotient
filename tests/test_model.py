@@ -58,3 +58,13 @@ def test_batch_text_logprobs_scores_stable_realizations():
 def test_batch_text_logprobs_rejects_nonpositive_batch_size():
     with pytest.raises(ValueError, match="must be positive"):
         _lm().batch_text_logprobs("", ["a"], batch_size=0)
+
+
+def test_model_counts_actual_forward_calls():
+    lm = _lm()
+    lm.batch_text_logprobs("", ["a", "b"], batch_size=1)
+    assert lm.target_forward_passes == 2
+    lm.next_token_logprobs([])
+    assert lm.target_forward_passes == 3
+    lm.reset_counters()
+    assert lm.target_forward_passes == 0
