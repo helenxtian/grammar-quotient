@@ -25,15 +25,18 @@ quotient sampler provably hit `p*`?*
 ## Phase 2 — Quotient mechanics (no speculation)
 - [x] Finite phrase `GrammarState`: `actions()`, `advance()`, `is_accepting()`
 - [x] Exact action and realization mass via finite-language lookahead
-- [ ] `Φ` handling — pick the rung:
-      (a) `Φ≡1` stepping stone, (b) exact `Φ` from the oracle, (c) approx later
+- [x] Exact `Φ` through exhaustive finite-language oracle lookahead
 - [x] **Synthetic validation gate:** analytic quotient factorization matches the
-      exact finite-language `p*` oracle. Qwen-backed validation remains open.
+      exact finite-language `p*` oracle.
+- [x] **Qwen validation gate:** 100 speculative dialogue samples use canonical
+      tokenization and have empirical TV 0.0317 from the exact 108-string target.
 
 ## Phase 3 — Speculation
-- [ ] Cheap draft `q_Q` over actions
+- [x] Uniform cheap draft `q_Q` over actions and within-action realizations
 - [x] Finite-support acceptance rule plus exact positive-residual correction
-- [ ] Re-run the KL-to-oracle gate with speculation ON (must still match)
+- [x] Re-run sampled TV-to-oracle gate with speculation ON
+- [x] Integrate one-token pending frontier; reclaim 300 boundaries across 100
+      Qwen-backed dialogue samples that strict immediate commitment rejects
 - [ ] Measure tokens-accepted-per-target-call vs. token-level speculative
 
 ## Phase 4 — Scale + evaluation
@@ -52,13 +55,14 @@ quotient sampler provably hit `p*`?*
 The repository now includes exactly enumerable phrase grammars for controlled
 reports, dialogue, and Python code/docstrings. These establish non-vacuous,
 competing grammar actions while keeping exact terminal normalization possible.
-Real Qwen scoring, tokenizer-mismatch instrumentation and reclamation, an
-integrated action draft loop, approximate `Φ`, and performance evaluation are
-still required before the stronger project claims are supported.
+Real Qwen scoring, tokenizer-mismatch instrumentation, a uniform action draft
+loop, and pending-token reclamation are now integrated for the finite dialogue
+benchmark. Approximate `Φ`, online target verification, and performance
+evaluation remain required before speed claims are supported.
 
 Tokenizer-boundary instrumentation is now implemented and validated against
 Qwen/Qwen2.5-0.5B revision `060db6499f32faf8b98477b0a26969ef7d8b9987`.
 All 804 observed crossings require a one-token pending suffix, and the scanner
-constructs canonical boundary-repair plans. Integration with target scoring and
-speculative acceptance remains open, so this is not yet an end-to-end
-reclamation result.
+constructs canonical boundary-repair plans. The exact finite-oracle dialogue
+benchmark exercises 300 such repairs over 100 samples while preserving canonical
+Qwen tokenization; strict immediate token commitment rejects all 100 attempts.

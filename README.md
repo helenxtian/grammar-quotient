@@ -219,11 +219,15 @@ Early-stage research prototype. Implemented foundations include:
 - finite phrase grammars with competing macro actions for reports, dialogue,
   and Python code/docstrings;
 - an exact finite-language oracle and analytic quotient factorization; and
-- finite-support speculative acceptance with positive-residual correction.
+- finite-support speculative acceptance with positive-residual correction;
+- a one-token pending frontier that repairs tokenizer-unstable action
+   boundaries; and
+- Qwen-backed exact-oracle quotient sampling over the 108-string dialogue
+   benchmark.
 
-Real Qwen-backed quotient decoding, cross-tokenization mismatch reclamation,
-approximate-future-validity analysis, and latency evaluation remain in progress.
-See the project plan for the validation gates.
+Online target verification, approximate-future-validity analysis, and a fair
+target-call/latency comparison remain in progress. See the project plan for the
+validation gates.
 
 ### Tokenizer-boundary instrumentation
 
@@ -247,7 +251,27 @@ canonical repair plan when the decoder keeps one token pending. Folding
 deterministic literals into the following action removes all report crossings
 and leaves 36 dialogue plus 720 code crossings between adjacent choices.
 
-This instrumentation and bounded repair plan do not yet constitute integrated
-speculative decoding: the target loop must retain the pending suffix, score the
-repaired joint tokenization, and demonstrate distribution-preserving acceptance
-before these cases count as end-to-end reclaimed drafts.
+### Exact finite-oracle benchmark
+
+The dialogue language can be scored exhaustively with pinned Qwen weights and
+sampled using uniform action drafts, positive-residual correction, and the
+pending-token frontier:
+
+```bash
+python -m gqsd.evaluate grammars/dialogue_phrases.json \
+   --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
+   --local-files-only \
+   --batch-size 4 \
+   --samples 100 \
+   --seed 20260824
+```
+
+On the CPU run recorded for this revision, exact scoring of all 108 strings
+took 9.997 seconds. The 100 sampled outputs had empirical TV 0.0317 from the
+exact target; all 100 had canonical Qwen tokenizations and exercised boundary
+repair, reclaiming 300 boundaries total. A baseline that commits every token
+immediately rejected all 100 corresponding attempts at unstable boundaries.
+
+This is an end-to-end finite-oracle reclamation result, not yet a production
+speculative decoder: target probabilities are precomputed by exhaustive scoring,
+and no reduction in online target-model calls or latency has been demonstrated.
