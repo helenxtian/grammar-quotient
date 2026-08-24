@@ -55,3 +55,10 @@ competing grammar actions while keeping exact terminal normalization possible.
 Real Qwen scoring, tokenizer-mismatch instrumentation and reclamation, an
 integrated action draft loop, approximate `Φ`, and performance evaluation are
 still required before the stronger project claims are supported.
+
+Tokenizer-boundary instrumentation is now implemented and validated against
+Qwen/Qwen2.5-0.5B revision `060db6499f32faf8b98477b0a26969ef7d8b9987`.
+All 804 observed crossings require a one-token pending suffix, and the scanner
+constructs canonical boundary-repair plans. Integration with target scoring and
+speculative acceptance remains open, so this is not yet an end-to-end
+reclamation result.

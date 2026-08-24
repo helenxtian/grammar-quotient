@@ -224,3 +224,30 @@ Early-stage research prototype. Implemented foundations include:
 Real Qwen-backed quotient decoding, cross-tokenization mismatch reclamation,
 approximate-future-validity analysis, and latency evaluation remain in progress.
 See the project plan for the validation gates.
+
+### Tokenizer-boundary instrumentation
+
+The phrase grammars can be scanned at every reachable action boundary with a
+pinned tokenizer revision:
+
+```bash
+python -m gqsd.tokenizer_analysis \
+   --model Qwen/Qwen2.5-0.5B \
+   --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
+   --pending-token-budget 1 \
+   grammars/report_phrases.json \
+   grammars/dialogue_phrases.json \
+   grammars/code_docstring_phrases.json
+```
+
+For that Qwen revision, the original grammars contain 804 tokenizer-unstable
+action boundaries: 6 in reports, 48 in dialogue, and 750 in code/docstrings.
+Every observed crossing changes exactly one suffix token, so every case has a
+canonical repair plan when the decoder keeps one token pending. Folding
+deterministic literals into the following action removes all report crossings
+and leaves 36 dialogue plus 720 code crossings between adjacent choices.
+
+This instrumentation and bounded repair plan do not yet constitute integrated
+speculative decoding: the target loop must retain the pending suffix, score the
+repaired joint tokenization, and demonstrate distribution-preserving acceptance
+before these cases count as end-to-end reclaimed drafts.
