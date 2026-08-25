@@ -333,3 +333,12 @@ over every reachable state of a finite grammar against `FiniteGrammarOracle`.
 Boundary-unstable intermediate actions use the existing pending-frontier
 reclamation path; exact boundary accounting still requires passing that
 frontier context into a future rollout.
+
+For local error `epsilon` over a grammar horizon `H`, the evaluator uses the
+finite-horizon bound `tanh(H * epsilon)` for terminal TV. On the pinned Qwen
+dialogue grammar, the beam sweep produced terminal TV of 0.00741, 0.0000024,
+0.0000018, and 0.0000018 for beam sizes 1, 2, 4, and 8 respectively. Beam 4
+had mean absolute log-ratio error 0.000034 and maximum error 0.00230, giving a
+conservative finite-horizon TV bound of 0.0115. These are finite-model
+measurements, not generalization claims; larger sweeps need KV-cache or prefix
+reuse because CPU long-context forward passes remain expensive.

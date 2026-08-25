@@ -56,6 +56,9 @@ quotient sampler provably hit `p*`?*
       now frames beam mass as an explicit approximation, but terminal KL/TV
       bounds and broader estimators remain:
       "exactly correct given a `Φ` oracle" vs. "correct + tractable `Φ` approx".
+- [x] Add finite-horizon TV bound and finite-grammar terminal KL/TV evaluator
+- [ ] Add KV-cache/prefix reuse before running larger real-Qwen beam sweeps;
+      current CPU measurements are dominated by repeated long-context forwards
 
 ## Current implementation note
 
@@ -63,10 +66,10 @@ The repository now includes exactly enumerable phrase grammars for controlled
 reports, dialogue, and Python code/docstrings. These establish non-vacuous,
 competing grammar actions while keeping exact terminal normalization possible.
 Real Qwen scoring, tokenizer-mismatch instrumentation, a uniform action draft
-loop, and pending-token reclamation are now integrated for the finite dialogue
-benchmark. Approximate `Φ`, online verification of `p*`, accelerator benchmarks,
-and broader performance evaluation remain required before general speed or
-faithfulness claims are supported.
+loop, pending-token reclamation, and deterministic approximate `Φ` estimation
+are now integrated for the finite dialogue benchmark. Online verification of
+`p*`, accelerator benchmarks, and broader performance evaluation remain
+required before general speed or faithfulness claims are supported.
 
 Online local-target verification is now also implemented. On the pinned
 10-sample CPU run, action batching used 4.54x fewer target forwards and 2.62x
