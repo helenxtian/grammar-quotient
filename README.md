@@ -226,9 +226,11 @@ Early-stage research prototype. Implemented foundations include:
    benchmark.
 
 Online local-target verification and an action-vs-token systems comparison are
-implemented. Approximate-future-validity analysis and online verification of
-the exact grammar-conditioned target remain in progress. See the project plan
-for the validation gates.
+implemented. A deterministic top-k/beam future-validity estimator is now
+available for bounded phrase grammars, with reachable-state comparison against
+the exact finite oracle. This estimator reports retained-path mass and is an
+approximation whenever beam pruning removes valid paths; it does not by itself
+establish exact online verification of the grammar-conditioned target.
 
 ### Tokenizer-boundary instrumentation
 
@@ -313,3 +315,21 @@ The targets also differ intentionally. Action mode normalizes base-model
 sequence mass over the current grammar realizations, while token mode performs
 standard local next-token masking. Without an online future-validity term
 `Phi`, neither comparison establishes exact preservation of `p(w | w in L)`.
+
+### Approximate online future validity
+
+`gqsd.phi.BeamPhiEstimator` estimates `Phi(u)` by expanding grammar action
+realizations with model sequence probabilities and retaining a fixed beam at
+each depth. The retained terminal mass is a lower bound on the mass found by
+the search. It can be supplied to `sample_online_actions` with the
+`phi_estimator` argument; action weights then use
+
+```
+Σ_s p(s | u) · Phi_hat(us)
+```
+
+The `compare_phi` helper evaluates absolute log-ratio error and support loss
+over every reachable state of a finite grammar against `FiniteGrammarOracle`.
+Boundary-unstable intermediate actions use the existing pending-frontier
+reclamation path; exact boundary accounting still requires passing that
+frontier context into a future rollout.

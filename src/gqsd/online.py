@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from .grammar import Action
 from .model import LM
+from .phi import PhiEstimator
 from .phrase_grammar import PhraseGrammar, PhraseState
 from .speculative import speculative_pick
 from .tokenizer_analysis import TokenFrontier
@@ -86,8 +87,9 @@ def sample_online_actions(
     *,
     rng: random.Random,
     pending_token_budget: int = 1,
+    phi_estimator: PhiEstimator | None = None,
 ) -> OnlineSample:
-    """Verify each competing grammar-action batch with one target forward pass."""
+    """Verify action batches, optionally weighted by estimated future mass."""
     lm.reset_counters()
     started = time.perf_counter()
     state = grammar.start()
@@ -105,12 +107,14 @@ def sample_online_actions(
             for candidate in candidates
         ]
         scores = lm.batch_sequence_logprobs(examples)
-        target = _normalize_logweights(
-            {
-                candidate.key: score
-                for candidate, score in zip(candidates, scores, strict=True)
-            }
-        )
+        weights: dict[str, float] = {}
+        for candidate, score in zip(candidates, scores, strict=True):
+            next_state = state.advance(candidate.action, candidate.realization)
+            phi_log_mass = 0.0
+            if phi_estimator is not None and not next_state.is_accepting():
+                phi_log_mass = phi_estimator.estimate(next_state).log_mass
+            weights[candidate.key] = score + phi_log_mass
+        target = _normalize_logweights(weights)
         chosen_key, accepted = speculative_pick(rng, target, _uniform(list(target)))
         chosen = next(candidate for candidate in candidates if candidate.key == chosen_key)
         target_rows_scored += len(candidates)

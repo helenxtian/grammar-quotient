@@ -41,8 +41,8 @@ quotient sampler provably hit `p*`?*
       target call and compare against token-trie speculative verification
 - [x] Measure target calls, accepted/output tokens per call, and CPU latency:
       50 vs. 227 calls and 13.94s vs. 36.50s over 10 dialogue samples
-- [ ] Add online `Phi` estimation/correction so action verification targets the
-      exact or explicitly approximated grammar-conditioned distribution
+- [x] Add deterministic beam-based online `Phi` estimation/correction; expose
+      state-level log-ratio and support-loss comparison against the exact oracle
 
 ## Phase 4 — Scale + evaluation
 - [ ] Nested JSON, tool-call schemas, SQL-over-fixed-schema, enum-heavy outputs
@@ -52,7 +52,9 @@ quotient sampler provably hit `p*`?*
 
 ## Theory track (parallel)
 - [ ] Formal proof of the Phase-2 factorization; should agree with the KL test
-- [ ] Characterize the target under **approximate** `Φ` — decide the framing:
+- [~] Characterize the target under **approximate** `Φ` — the implementation
+      now frames beam mass as an explicit approximation, but terminal KL/TV
+      bounds and broader estimators remain:
       "exactly correct given a `Φ` oracle" vs. "correct + tractable `Φ` approx".
 
 ## Current implementation note
