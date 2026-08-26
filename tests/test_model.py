@@ -68,3 +68,24 @@ def test_model_counts_actual_forward_calls():
     assert lm.target_forward_passes == 3
     lm.reset_counters()
     assert lm.target_forward_passes == 0
+
+
+class CacheModel:
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, ids, attention_mask=None, past_key_values=None, use_cache=False):
+        self.calls += 1
+        batch, length = ids.shape
+        logits = torch.zeros((batch, length, 5))
+        return SimpleNamespace(logits=logits, past_key_values=(self.calls,))
+
+
+def test_sequence_logprob_with_prefix_cache_reuses_prefix_forward():
+    model = CacheModel()
+    lm = LM(tokenizer=FakeTokenizer(), model=model, device="cpu")
+
+    score = lm.sequence_logprob_with_prefix_cache([1], [2, 3])
+
+    assert score == pytest.approx(-2 * torch.log(torch.tensor(5.0)).item())
+    assert model.calls == 2

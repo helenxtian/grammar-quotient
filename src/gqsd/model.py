@@ -73,11 +73,40 @@ class LM:
     def reset_counters(self) -> None:
         self.target_forward_passes = 0
 
-    def _forward(self, ids: torch.Tensor, attention_mask: torch.Tensor | None = None):
+    @torch.no_grad()
+    def sequence_logprob_with_prefix_cache(
+        self, prefix_ids: list[int], cont_ids: list[int]
+    ) -> float:
+        """Score a continuation while reusing one forward pass for its prefix."""
+        if not cont_ids:
+            return 0.0
+        context_ids = prefix_ids or self.initial_context_ids()
+        prefix_tensor = torch.tensor([context_ids], device=self.device)
+        prefix_output = self._forward(prefix_tensor, attention_mask=torch.ones_like(prefix_tensor))
+        past = prefix_output.past_key_values
+        if past is None:
+            return self.sequence_logprob(prefix_ids, cont_ids)
+        total = 0.0
+        logits = prefix_output.logits[0, -1]
+        total += torch.log_softmax(logits.float(), dim=-1)[cont_ids[0]].item()
+        for token_id, previous_id in zip(cont_ids[1:], cont_ids, strict=False):
+            next_input = torch.tensor([[previous_id]], device=self.device)
+            output = self._forward(next_input, past_key_values=past, use_cache=True)
+            past = output.past_key_values
+            logits = output.logits[0, -1]
+            total += torch.log_softmax(logits.float(), dim=-1)[token_id].item()
+        return total
+
+    def _forward(
+        self,
+        ids: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+        **kwargs,
+    ):
         self.target_forward_passes += 1
         if attention_mask is None:
-            return self.model(ids)
-        return self.model(ids, attention_mask=attention_mask)
+            return self.model(ids, **kwargs)
+        return self.model(ids, attention_mask=attention_mask, **kwargs)
 
     @torch.no_grad()
     def next_token_logprobs(self, input_ids: list[int]) -> torch.Tensor:

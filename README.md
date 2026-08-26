@@ -224,6 +224,8 @@ Early-stage research prototype. Implemented foundations include:
    boundaries; and
 - Qwen-backed exact-oracle quotient sampling over the 108-string dialogue
    benchmark.
+- a reusable grammar-action generation engine with action traces, counters,
+   unconstrained sampling, and finite-grammar token masking baselines.
 
 Online local-target verification and an action-vs-token systems comparison are
 implemented. A deterministic top-k/beam future-validity estimator is now
@@ -342,3 +344,7 @@ had mean absolute log-ratio error 0.000034 and maximum error 0.00230, giving a
 conservative finite-horizon TV bound of 0.0115. These are finite-model
 measurements, not generalization claims; larger sweeps need KV-cache or prefix
 reuse because CPU long-context forward passes remain expensive.
+
+The model wrapper now includes an opt-in prefix-cache scoring primitive. Full
+integration with batched action scoring is still pending, so the existing CPU
+latency measurements should not be interpreted as cache-optimized results.

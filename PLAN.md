@@ -15,12 +15,11 @@ quotient sampler provably hit `p*`?*
       fully enumerable (`grammars/toy_record.json`, `grammar.py` interfaces)
 - [x] Smoke tests
 
-## Phase 1 — Baselines + exact oracle
-- [ ] Unconstrained sampling from `p` (`baselines.sample_unconstrained`)
-- [ ] Token-level masked decoding — the biased baseline
+- [x] Unconstrained sampling from `p` (`baselines.sample_unconstrained`)
+- [x] Token-level masked decoding — the biased baseline
       (`baselines.sample_token_masked`)
 - [x] Brute-force exact `p*` oracle over finite grammars (`oracle.py`)
-- [ ] First experiment: show masked decoding ≠ `p*` (TV/KL gap) on the toy schema
+- [ ] First experiment: show masked decoding != `p*` (TV/KL gap) on the toy schema
 
 ## Phase 2 — Quotient mechanics (no speculation)
 - [x] Finite phrase `GrammarState`: `actions()`, `advance()`, `is_accepting()`
@@ -58,7 +57,15 @@ quotient sampler provably hit `p*`?*
       "exactly correct given a `Φ` oracle" vs. "correct + tractable `Φ` approx".
 - [x] Add finite-horizon TV bound and finite-grammar terminal KL/TV evaluator
 - [ ] Add KV-cache/prefix reuse before running larger real-Qwen beam sweeps;
+- [x] Add opt-in model prefix-cache scoring primitive with regression coverage
+- [ ] Integrate cache reuse into batched action scoring and online generation;
       current CPU measurements are dominated by repeated long-context forwards
+
+## Phase 5 - Usable generation surface
+- [x] Reusable `generate_actions` engine with action trace and counters
+- [x] Initial unconstrained and finite-grammar token-masked baselines
+- [ ] Integrate prefix cache reuse into batched action scoring
+- [ ] Add CLI generation command and common benchmark report
 
 ## Current implementation note
 
