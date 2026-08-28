@@ -41,12 +41,18 @@ def _candidate_key(action: Action, realization: str) -> str:
     return f"{action.label}\0{realization}"
 
 
-def _candidates(lm: LM, state: PhraseState, frontier: TokenFrontier) -> list[Candidate]:
+def _candidates(
+    lm: LM,
+    state: PhraseState,
+    frontier: TokenFrontier,
+    *,
+    text_prefix: str = "",
+) -> list[Candidate]:
     candidates: list[Candidate] = []
     committed = frontier.committed_ids
     for action in state.actions():
         for realization in action.realizations:
-            joint_ids = tuple(lm.encode(state.text + realization))
+            joint_ids = tuple(lm.encode(text_prefix + state.text + realization))
             if joint_ids[: len(committed)] != committed:
                 raise ValueError("Candidate changes tokens before the pending frontier")
             continuation_ids = joint_ids[len(committed) :]

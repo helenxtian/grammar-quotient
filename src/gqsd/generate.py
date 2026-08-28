@@ -7,8 +7,8 @@ import random
 import time
 from dataclasses import dataclass
 
-from .grammar import Action
 from .model import LM
+from .online import _candidates
 from .phi import PhiEstimator
 from .phrase_grammar import PhraseGrammar
 from .speculative import speculative_pick
@@ -48,14 +48,11 @@ def _uniform(keys: list[str]) -> dict[str, float]:
     return {key: probability for key in keys}
 
 
-def _key(action: Action, realization: str) -> str:
-    return f"{action.label}\0{realization}"
-
-
 def generate_actions(
     lm: LM,
     grammar: PhraseGrammar,
     *,
+    prompt: str = "",
     rng: random.Random | None = None,
     pending_token_budget: int = 1,
     phi_estimator: PhiEstimator | None = None,
@@ -66,6 +63,8 @@ def generate_actions(
     started = time.perf_counter()
     state = grammar.start()
     frontier = TokenFrontier(lm.tokenizer, pending_token_budget=pending_token_budget)
+    if prompt:
+        frontier.append(prompt)
     actions: list[ActionStep] = []
     target_rows_scored = 0
     accepted_tokens = 0
@@ -73,40 +72,27 @@ def generate_actions(
     reclaimed_boundaries = 0
 
     while not state.is_accepting():
-        candidates: list[tuple[Action, str, tuple[int, ...], tuple[int, ...]]] = []
-        for action in state.actions():
-            for realization in action.realizations:
-                joint_ids = tuple(lm.encode(state.text + realization))
-                if joint_ids[: len(frontier.committed_ids)] != frontier.committed_ids:
-                    raise ValueError("Candidate changes tokens before the pending frontier")
-                continuation = joint_ids[len(frontier.committed_ids) :]
-                verification = continuation
-                next_state = state.advance(action, realization)
-                if next_state.is_accepting():
-                    if lm.tokenizer.eos_token_id is None:
-                        raise ValueError("Tokenizer needs EOS for terminal verification")
-                    verification += (lm.tokenizer.eos_token_id,)
-                candidates.append((action, realization, continuation, verification))
+        candidates = _candidates(lm, state, frontier, text_prefix=prompt)
         scores = lm.batch_sequence_logprobs(
-            [([*frontier.committed_ids], list(verification)) for _, _, _, verification in candidates]
+            [([*frontier.committed_ids], list(candidate.verification_ids)) for candidate in candidates]
         )
         weights: dict[str, float] = {}
-        for (action, realization, _, _), score in zip(candidates, scores, strict=True):
-            next_state = state.advance(action, realization)
+        for candidate, score in zip(candidates, scores, strict=True):
+            next_state = state.advance(candidate.action, candidate.realization)
             future = 0.0
             if phi_estimator is not None and not next_state.is_accepting():
                 future = phi_estimator.estimate(next_state).log_mass
-            weights[_key(action, realization)] = score + future
+            weights[candidate.key] = score + future
         target = _normalize(weights)
         chosen_key, accepted = speculative_pick(rng, target, _uniform(list(target)))
-        chosen = next(candidate for candidate in candidates if _key(candidate[0], candidate[1]) == chosen_key)
-        update = frontier.append(chosen[1])
-        actions.append(ActionStep(chosen[0].label, chosen[1], accepted, update.reclaimed_boundary))
-        accepted_tokens += len(chosen[3]) if accepted else 0
+        chosen = next(candidate for candidate in candidates if candidate.key == chosen_key)
+        update = frontier.append(chosen.realization)
+        actions.append(ActionStep(chosen.action.label, chosen.realization, accepted, update.reclaimed_boundary))
+        accepted_tokens += len(chosen.verification_ids) if accepted else 0
         rejected_actions += not accepted
         reclaimed_boundaries += update.reclaimed_boundary
         target_rows_scored += len(candidates)
-        state = state.advance(chosen[0], chosen[1])
+        state = state.advance(chosen.action, chosen.realization)
 
     frontier.finalize()
     return GenerationResult(
