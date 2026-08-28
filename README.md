@@ -350,3 +350,16 @@ The model wrapper now includes shared-prefix cache scoring, and
 cache. Models that cannot clone or advance their cache fall back to the
 regular padded batch scorer. Existing CPU latency measurements predate this
 integration and should not be interpreted as cache-optimized results.
+
+To compare the three decoder families on an enumerable grammar, run:
+
+```bash
+.venv/bin/python -m gqsd.evaluate_decoders grammars/dialogue_phrases.json \
+   --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
+   --local-files-only --samples 100
+```
+
+The JSON report includes validity rate, conditional TV/KL to exact `p*`,
+target forward passes, and latency for unconstrained, token-masked, and
+grammar-action decoding. TV/KL are calculated over valid outputs; invalid
+outputs are retained in the separately reported validity rate.

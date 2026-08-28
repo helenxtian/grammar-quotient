@@ -45,7 +45,7 @@ quotient sampler provably hit `p*`?*
 
 ## Phase 4 — Scale + evaluation
 - [ ] Nested JSON, tool-call schemas, SQL-over-fixed-schema, enum-heavy outputs
-- [ ] Metrics: faithfulness vs. masking, target-calls/latency, validity rate,
+- [x] Metrics: faithfulness vs. masking, target-calls/latency, validity rate,
       tokenizer-bias among enums/IDs (RQ4)
 - [ ] Dynamic long-context constraints (RQ5)
 
@@ -65,6 +65,8 @@ quotient sampler provably hit `p*`?*
 - [x] Reusable `generate_actions` engine with action trace and counters
 - [x] Initial unconstrained and finite-grammar token-masked baselines
 - [x] Integrate prefix cache reuse into batched action scoring
+- [x] Common decoder benchmark with validity, TV/KL-to-oracle, target work,
+      and latency metrics
 - [ ] Add CLI generation command and common benchmark report
 
 ## Current implementation note

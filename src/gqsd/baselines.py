@@ -21,11 +21,13 @@ from .phrase_grammar import PhraseState
 from .tokenizer_analysis import TokenFrontier
 
 
-def sample_unconstrained(lm: LM, prompt: str, max_tokens: int) -> str:
+def sample_unconstrained(
+    lm: LM, prompt: str, max_tokens: int, *, rng: random.Random | None = None
+) -> str:
     """Plain ancestral sampling from ``p`` until EOS or ``max_tokens``."""
     if max_tokens < 0:
         raise ValueError("Maximum token count must be nonnegative")
-    rng = random.Random()
+    rng = rng or random.Random()
     ids = lm.encode(prompt)
     output: list[int] = []
     eos = lm.tokenizer.eos_token_id
@@ -48,14 +50,19 @@ def sample_unconstrained(lm: LM, prompt: str, max_tokens: int) -> str:
 
 
 def sample_token_masked(
-    lm: LM, prompt: str, start_state: GrammarState, max_tokens: int
+    lm: LM,
+    prompt: str,
+    start_state: GrammarState,
+    max_tokens: int,
+    *,
+    rng: random.Random | None = None,
 ) -> str:
     """Token-level masked and renormalized decoding for finite phrase grammars."""
     if max_tokens < 0:
         raise ValueError("Maximum token count must be nonnegative")
     if not isinstance(start_state, PhraseState):
         raise TypeError("Token masking currently requires a PhraseState")
-    rng = random.Random()
+    rng = rng or random.Random()
     state = start_state
     frontier = TokenFrontier(lm.tokenizer, pending_token_budget=1)
     while not state.is_accepting() and len(frontier.canonical_ids) < max_tokens:
