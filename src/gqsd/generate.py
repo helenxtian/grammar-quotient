@@ -56,6 +56,7 @@ def generate_actions(
     rng: random.Random | None = None,
     pending_token_budget: int = 1,
     phi_estimator: PhiEstimator | None = None,
+    use_prefix_cache: bool = True,
 ) -> GenerationResult:
     """Generate a valid output by proposing and verifying grammar actions."""
     rng = rng or random.Random()
@@ -73,9 +74,17 @@ def generate_actions(
 
     while not state.is_accepting():
         candidates = _candidates(lm, state, frontier, text_prefix=prompt)
-        scores = lm.batch_sequence_logprobs(
-            [([*frontier.committed_ids], list(candidate.verification_ids)) for candidate in candidates]
-        )
+        examples = [
+            ([*frontier.committed_ids], list(candidate.verification_ids))
+            for candidate in candidates
+        ]
+        scores = None
+        if use_prefix_cache:
+            scores = lm.batch_sequence_logprobs_with_prefix_cache(
+                examples[0][0], [verification for _, verification in examples]
+            )
+        if scores is None:
+            scores = lm.batch_sequence_logprobs(examples)
         weights: dict[str, float] = {}
         for candidate, score in zip(candidates, scores, strict=True):
             next_state = state.advance(candidate.action, candidate.realization)

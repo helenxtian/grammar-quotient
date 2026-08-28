@@ -40,3 +40,26 @@ def test_generate_actions_preserves_prompt_in_token_frontier():
     )
 
     assert result.text == "a"
+
+
+class CacheFakeModel(FakeModel):
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, ids, attention_mask=None, past_key_values=None, use_cache=False):
+        self.calls += 1
+        output = super().__call__(ids, attention_mask=attention_mask)
+        output.past_key_values = (self.calls,)
+        return output
+
+
+def test_generate_actions_uses_prefix_cache_when_available():
+    model = CacheFakeModel()
+    grammar = PhraseGrammar(name="generation", segments=(Literal("a"),))
+
+    result = generate_actions(
+        LM(tokenizer=MergeTokenizer(), model=model, device="cpu"), grammar
+    )
+
+    assert result.text == "a"
+    assert model.calls == 2

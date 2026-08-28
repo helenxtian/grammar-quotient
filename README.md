@@ -345,6 +345,8 @@ conservative finite-horizon TV bound of 0.0115. These are finite-model
 measurements, not generalization claims; larger sweeps need KV-cache or prefix
 reuse because CPU long-context forward passes remain expensive.
 
-The model wrapper now includes an opt-in prefix-cache scoring primitive. Full
-integration with batched action scoring is still pending, so the existing CPU
-latency measurements should not be interpreted as cache-optimized results.
+The model wrapper now includes shared-prefix cache scoring, and
+`generate_actions` uses it by default when the model exposes a branchable
+cache. Models that cannot clone or advance their cache fall back to the
+regular padded batch scorer. Existing CPU latency measurements predate this
+integration and should not be interpreted as cache-optimized results.

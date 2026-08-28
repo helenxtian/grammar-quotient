@@ -89,3 +89,13 @@ def test_sequence_logprob_with_prefix_cache_reuses_prefix_forward():
 
     assert score == pytest.approx(-2 * torch.log(torch.tensor(5.0)).item())
     assert model.calls == 2
+
+
+def test_batch_sequence_logprobs_with_prefix_cache_shares_first_token():
+    model = CacheModel()
+    lm = LM(tokenizer=FakeTokenizer(), model=model, device="cpu")
+
+    scores = lm.batch_sequence_logprobs_with_prefix_cache([1], [[2, 3], [3, 2]])
+
+    assert scores == pytest.approx([-2 * torch.log(torch.tensor(5.0)).item()] * 2)
+    assert model.calls == 3

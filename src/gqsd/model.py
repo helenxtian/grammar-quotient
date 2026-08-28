@@ -8,6 +8,8 @@ verification) is built on the primitives exposed here.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from copy import Error as CopyError
+from copy import deepcopy
 from dataclasses import dataclass
 
 import torch
@@ -96,6 +98,64 @@ class LM:
             logits = output.logits[0, -1]
             total += torch.log_softmax(logits.float(), dim=-1)[token_id].item()
         return total
+
+    @torch.no_grad()
+    def batch_sequence_logprobs_with_prefix_cache(
+        self, prefix_ids: list[int], continuations: list[list[int]]
+    ) -> list[float] | None:
+        """Score branches sharing a prefix, reusing the prefix forward pass.
+
+        Returns ``None`` when the underlying model does not expose a usable
+        cache, allowing callers to retain their regular batched scorer.
+        """
+        if not continuations:
+            return []
+        if any(not continuation for continuation in continuations):
+            raise ValueError("Cached continuations must not be empty")
+        context_ids = prefix_ids or self.initial_context_ids()
+        prefix_tensor = torch.tensor([context_ids], device=self.device)
+        try:
+            prefix_output = self._forward(
+                prefix_tensor,
+                attention_mask=torch.ones_like(prefix_tensor),
+                use_cache=True,
+            )
+            prefix_past = prefix_output.past_key_values
+        except (AttributeError, TypeError):
+            return None
+        if prefix_past is None:
+            return None
+
+        prefix_logprobs = torch.log_softmax(prefix_output.logits[0, -1].float(), dim=-1)
+        scores: list[float] = []
+        for continuation in continuations:
+            try:
+                past = deepcopy(prefix_past)
+            except (CopyError, TypeError, RuntimeError):
+                return None
+            total = prefix_logprobs[continuation[0]].item()
+            for offset, token_id in enumerate(continuation[1:], start=1):
+                previous_id = continuation[offset - 1]
+                input_tensor = torch.tensor([[previous_id]], device=self.device)
+                attention_mask = torch.ones(
+                    (1, len(context_ids) + offset), device=self.device, dtype=torch.long
+                )
+                try:
+                    output = self._forward(
+                        input_tensor,
+                        attention_mask=attention_mask,
+                        past_key_values=past,
+                        use_cache=True,
+                    )
+                except (AttributeError, TypeError, RuntimeError):
+                    return None
+                past = output.past_key_values
+                if past is None:
+                    return None
+                logits = output.logits[0, -1].float()
+                total += torch.log_softmax(logits, dim=-1)[token_id].item()
+            scores.append(total)
+        return scores
 
     def _forward(
         self,
