@@ -44,7 +44,9 @@ quotient sampler provably hit `p*`?*
       state-level log-ratio and support-loss comparison against the exact oracle
 
 ## Phase 4 — Scale + evaluation
-- [ ] Nested JSON, tool-call schemas, SQL-over-fixed-schema, enum-heavy outputs
+- [x] Bounded tool-call JSON and enum-heavy structured outputs
+- [x] Bounded mathematical expressions
+- [ ] Nested JSON with optional/recursive structure and SQL-over-fixed-schema
 - [x] Metrics: faithfulness vs. masking, target-calls/latency, validity rate,
       tokenizer-bias among enums/IDs (RQ4)
 - [ ] Dynamic long-context constraints (RQ5)

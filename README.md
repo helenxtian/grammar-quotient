@@ -217,7 +217,7 @@ Early-stage research prototype. Implemented foundations include:
 
 - the original exact synthetic-character correctness harness;
 - finite phrase grammars with competing macro actions for reports, dialogue,
-  and Python code/docstrings;
+   Python code/docstrings, mathematical expressions, and tool-call JSON;
 - an exact finite-language oracle and analytic quotient factorization; and
 - finite-support speculative acceptance with positive-residual correction;
 - a one-token pending frontier that repairs tokenizer-unstable action

@@ -84,6 +84,8 @@ def test_slot_choices_must_partition_realizations():
         ("report_phrases.json", 432),
         ("dialogue_phrases.json", 108),
         ("code_docstring_phrases.json", 576),
+        ("math_expression_phrases.json", 28),
+        ("tool_call_phrases.json", 16),
     ],
 )
 def test_representative_grammar_fixture(filename, expected_size):

@@ -1,0 +1,32 @@
+{
+  "name": "bounded_tool_calls",
+  "segments": [
+    {"literal": "{"},
+    {"literal": "\"tool\":\""},
+    {
+      "slot": "tool",
+      "choices": [
+        {"label": "search", "realizations": ["search", "lookup"]},
+        {"label": "summarize", "realizations": ["summarize"]},
+        {"label": "notify", "realizations": ["notify"]}
+      ]
+    },
+    {"literal": "\",\"args\":{\"priority\":\""},
+    {
+      "slot": "priority",
+      "choices": [
+        {"label": "low", "realizations": ["low"]},
+        {"label": "high", "realizations": ["high"]}
+      ]
+    },
+    {"literal": "\",\"dry_run\":"},
+    {
+      "slot": "dry_run",
+      "choices": [
+        {"label": "enabled", "realizations": ["true"]},
+        {"label": "disabled", "realizations": ["false"]}
+      ]
+    },
+    {"literal": "}}"}
+  ]
+}
