@@ -7,6 +7,7 @@ import random
 import time
 from dataclasses import dataclass
 
+from .grammar import ActionKind
 from .model import LM
 from .online import _candidates
 from .phi import PhiEstimator
@@ -48,6 +49,34 @@ def _uniform(keys: list[str]) -> dict[str, float]:
     return {key: probability for key in keys}
 
 
+def _sample_open_span(
+    lm: LM,
+    prompt: str,
+    state_text: str,
+    stop: str,
+    max_tokens: int,
+    rng: random.Random,
+) -> tuple[str, int]:
+    generated = ""
+    for token_count in range(1, max_tokens + 1):
+        context_ids = lm.encode(prompt + state_text + generated)
+        logprobs = lm.next_token_logprobs(context_ids)
+        probabilities = logprobs.exp().tolist()
+        threshold = rng.random()
+        selected = len(probabilities) - 1
+        for token_id, probability in enumerate(probabilities):
+            threshold -= probability
+            if threshold <= 0.0:
+                selected = token_id
+                break
+        if lm.tokenizer.eos_token_id is not None and selected == lm.tokenizer.eos_token_id:
+            raise ValueError("Open span reached EOS before its stop marker")
+        generated += lm.decode([selected])
+        if generated.endswith(stop):
+            return generated[: -len(stop)], token_count
+    raise ValueError("Open span exceeded its token budget")
+
+
 def generate_actions(
     lm: LM,
     grammar: PhraseGrammar,
@@ -73,6 +102,29 @@ def generate_actions(
     reclaimed_boundaries = 0
 
     while not state.is_accepting():
+        open_actions = [action for action in state.actions() if action.kind is ActionKind.OPEN]
+        if open_actions:
+            if len(open_actions) != 1:
+                raise ValueError("Open-span decoding requires one available open action")
+            segment = grammar.segments[state.segment_index]
+            if not hasattr(segment, "stop") or not hasattr(segment, "max_tokens"):
+                raise ValueError("OPEN action is not backed by a bounded open span")
+            realization, token_count = _sample_open_span(
+                lm, prompt, state.text, segment.stop, segment.max_tokens, rng
+            )
+            update = frontier.append(realization + segment.stop)
+            actions.append(
+                ActionStep(
+                    open_actions[0].label,
+                    realization,
+                    True,
+                    update.reclaimed_boundary,
+                )
+            )
+            accepted_tokens += token_count
+            reclaimed_boundaries += update.reclaimed_boundary
+            state = state.advance(open_actions[0], realization + segment.stop)
+            continue
         candidates = _candidates(lm, state, frontier, text_prefix=prompt)
         examples = [
             ([*frontier.committed_ids], list(candidate.verification_ids))

@@ -67,6 +67,7 @@ quotient sampler provably hit `p*`?*
 - [x] Integrate prefix cache reuse into batched action scoring
 - [x] Common decoder benchmark with validity, TV/KL-to-oracle, target work,
       and latency metrics
+- [x] Bounded open-span fallback with token-level stop-marker decoding
 - [ ] Add CLI generation command and common benchmark report
 
 ## Current implementation note

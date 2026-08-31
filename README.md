@@ -363,3 +363,8 @@ The JSON report includes validity rate, conditional TV/KL to exact `p*`,
 target forward passes, and latency for unconstrained, token-masked, and
 grammar-action decoding. TV/KL are calculated over valid outputs; invalid
 outputs are retained in the separately reported validity rate.
+
+Finite phrase grammars can also include bounded open spans. The action engine
+then samples tokens until the span's explicit stop marker or token budget is
+reached. These hybrid outputs are not finite-oracle samples, so exact `p*`
+comparison remains limited to fully enumerable grammars.

@@ -44,7 +44,20 @@ class Slot:
             raise ValueError(f"Choices in slot {self.name!r} must be disjoint")
 
 
-Segment = Literal | Slot
+@dataclass(frozen=True)
+class OpenSpan:
+    name: str
+    stop: str
+    max_tokens: int = 32
+
+    def __post_init__(self) -> None:
+        if not self.name or not self.stop:
+            raise ValueError("An open span needs a name and stop marker")
+        if self.max_tokens <= 0:
+            raise ValueError("An open span needs a positive token budget")
+
+
+Segment = Literal | Slot | OpenSpan
 
 
 @dataclass(frozen=True)
@@ -60,11 +73,13 @@ class PhraseGrammar:
         return PhraseState(grammar=self)
 
     def enumerate(self) -> list[str]:
+        if any(isinstance(segment, OpenSpan) for segment in self.segments):
+            raise ValueError("Open-span grammars do not have a finite enumeration")
         alternatives: list[tuple[str, ...]] = []
         for segment in self.segments:
             if isinstance(segment, Literal):
                 alternatives.append((segment.text,))
-            else:
+            elif isinstance(segment, Slot):
                 alternatives.append(
                     tuple(text for choice in segment.choices for text in choice.realizations)
                 )
@@ -84,6 +99,8 @@ class PhraseGrammar:
             if isinstance(segment, Literal):
                 pending_literal += segment.text
                 continue
+            if isinstance(segment, OpenSpan):
+                raise TypeError("Cannot coalesce literals around an open span")
             if pending_literal:
                 segment = Slot(
                     name=segment.name,
@@ -145,6 +162,13 @@ class PhraseState(GrammarState):
                     realizations=(segment.text,),
                 )
             ]
+        if isinstance(segment, OpenSpan):
+            return [
+                Action(
+                    kind=ActionKind.OPEN,
+                    label=f"{segment.name}:{self.segment_index}",
+                )
+            ]
         return [
             Action(
                 kind=(
@@ -161,7 +185,7 @@ class PhraseState(GrammarState):
     def advance(self, action: Action, realization: str) -> PhraseState:
         if action not in self.actions():
             raise ValueError(f"Action {action.label!r} is not available from this state")
-        if realization not in action.realizations:
+        if action.kind is not ActionKind.OPEN and realization not in action.realizations:
             raise ValueError(f"Realization {realization!r} does not belong to {action.label!r}")
         return PhraseState(
             grammar=self.grammar,
