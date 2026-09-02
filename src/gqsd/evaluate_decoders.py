@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--samples", type=int, default=100)
     parser.add_argument("--max-tokens", type=int, default=128)
     parser.add_argument("--seed", type=int, default=20260828)
-    parser.add_argument("--no-prefix-cache", action="store_true")
+    parser.add_argument("--prefix-cache", action="store_true")
     parser.add_argument("--local-files-only", action="store_true")
     args = parser.parse_args(argv)
 
@@ -146,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
             samples=args.samples,
             seed=args.seed,
             max_tokens=args.max_tokens,
-            use_prefix_cache=not args.no_prefix_cache,
+            use_prefix_cache=args.prefix_cache,
         ),
     }
     print(json.dumps(result, indent=2))

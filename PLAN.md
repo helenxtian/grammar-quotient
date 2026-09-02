@@ -62,11 +62,13 @@ quotient sampler provably hit `p*`?*
 - [x] Add opt-in model prefix-cache scoring primitive with regression coverage
 - [x] Integrate cache reuse into batched action scoring for branchable models;
       cache cloning falls back to the regular padded batch scorer
+- [ ] Measure and tune an adaptive cache policy; on the first pinned CPU
+      dialogue run, cache reduced context work but increased wall-clock time
 
 ## Phase 5 - Usable generation surface
 - [x] Reusable `generate_actions` engine with action trace and counters
 - [x] Initial unconstrained and finite-grammar token-masked baselines
-- [x] Integrate prefix cache reuse into batched action scoring
+- [x] Integrate prefix cache reuse into batched action scoring (opt-in)
 - [x] Common decoder benchmark with validity, TV/KL-to-oracle, target work,
       and latency metrics
 - [x] Bounded open-span fallback with token-level stop-marker decoding

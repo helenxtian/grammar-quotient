@@ -345,11 +345,12 @@ conservative finite-horizon TV bound of 0.0115. These are finite-model
 measurements, not generalization claims; larger sweeps need KV-cache or prefix
 reuse because CPU long-context forward passes remain expensive.
 
-The model wrapper now includes shared-prefix cache scoring, and
-`generate_actions` uses it by default when the model exposes a branchable
-cache. Models that cannot clone or advance their cache fall back to the
-regular padded batch scorer. Existing CPU latency measurements predate this
-integration and should not be interpreted as cache-optimized results.
+The model wrapper now includes shared-prefix cache scoring. It is opt-in in
+`generate_actions` and the benchmark CLI because the first pinned CPU dialogue
+run reduced context work but increased wall-clock time: 10 short cache forwards
+versus 5 padded forwards, and 2.07s versus 1.08s for one action sample. Models
+that cannot clone or advance their cache fall back to the regular padded batch
+scorer.
 
 To compare the three decoder families on an enumerable grammar, run:
 
@@ -358,6 +359,8 @@ To compare the three decoder families on an enumerable grammar, run:
    --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
    --local-files-only --samples 100
 ```
+
+Add `--prefix-cache` to measure the experimental cache path explicitly.
 
 The JSON report includes validity rate, conditional TV/KL to exact `p*`,
 target forward passes, and latency for unconstrained, token-masked, and

@@ -92,10 +92,25 @@ def test_sequence_logprob_with_prefix_cache_reuses_prefix_forward():
 
 
 def test_batch_sequence_logprobs_with_prefix_cache_shares_first_token():
-    model = CacheModel()
+    class BatchCacheModel(CacheModel):
+        def __call__(self, ids, attention_mask=None, past_key_values=None, use_cache=False):
+            self.calls += 1
+            batch, length = ids.shape
+            logits = torch.zeros((batch, length, 5))
+            past = torch.zeros((batch, 1, 1))
+            return SimpleNamespace(logits=logits, past_key_values=past)
+
+    model = BatchCacheModel()
     lm = LM(tokenizer=FakeTokenizer(), model=model, device="cpu")
 
     scores = lm.batch_sequence_logprobs_with_prefix_cache([1], [[2, 3], [3, 2]])
 
     assert scores == pytest.approx([-2 * torch.log(torch.tensor(5.0)).item()] * 2)
-    assert model.calls == 3
+    assert model.calls == 2
+
+
+def test_batch_sequence_logprobs_with_prefix_cache_falls_back_for_empty_branch():
+    model = CacheModel()
+    lm = LM(tokenizer=FakeTokenizer(), model=model, device="cpu")
+
+    assert lm.batch_sequence_logprobs_with_prefix_cache([1], [[2], []]) is None

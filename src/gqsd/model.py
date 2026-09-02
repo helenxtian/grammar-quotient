@@ -8,8 +8,6 @@ verification) is built on the primitives exposed here.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from copy import Error as CopyError
-from copy import deepcopy
 from dataclasses import dataclass
 
 import torch
@@ -111,7 +109,7 @@ class LM:
         if not continuations:
             return []
         if any(not continuation for continuation in continuations):
-            raise ValueError("Cached continuations must not be empty")
+            return None
         context_ids = prefix_ids or self.initial_context_ids()
         prefix_tensor = torch.tensor([context_ids], device=self.device)
         try:
@@ -127,35 +125,76 @@ class LM:
             return None
 
         prefix_logprobs = torch.log_softmax(prefix_output.logits[0, -1].float(), dim=-1)
-        scores: list[float] = []
-        for continuation in continuations:
+        scores = [prefix_logprobs[continuation[0]].item() for continuation in continuations]
+        active_indices = [index for index, continuation in enumerate(continuations) if len(continuation) > 1]
+        try:
+            past = self._repeat_cache(prefix_past, len(active_indices))
+        except (AttributeError, TypeError, RuntimeError):
+            return None
+        if past is None:
+            return None
+
+        for offset in range(1, max(map(len, continuations))):
+            if not active_indices:
+                break
+            input_ids = torch.tensor(
+                [[continuations[index][offset - 1]] for index in active_indices],
+                device=self.device,
+            )
+            attention_mask = torch.ones(
+                (len(active_indices), len(context_ids) + offset),
+                device=self.device,
+                dtype=torch.long,
+            )
             try:
-                past = deepcopy(prefix_past)
-            except (CopyError, TypeError, RuntimeError):
-                return None
-            total = prefix_logprobs[continuation[0]].item()
-            for offset, token_id in enumerate(continuation[1:], start=1):
-                previous_id = continuation[offset - 1]
-                input_tensor = torch.tensor([[previous_id]], device=self.device)
-                attention_mask = torch.ones(
-                    (1, len(context_ids) + offset), device=self.device, dtype=torch.long
+                output = self._forward(
+                    input_ids,
+                    attention_mask=attention_mask,
+                    past_key_values=past,
+                    use_cache=True,
                 )
-                try:
-                    output = self._forward(
-                        input_tensor,
-                        attention_mask=attention_mask,
-                        past_key_values=past,
-                        use_cache=True,
-                    )
-                except (AttributeError, TypeError, RuntimeError):
-                    return None
-                past = output.past_key_values
-                if past is None:
-                    return None
-                logits = output.logits[0, -1].float()
-                total += torch.log_softmax(logits, dim=-1)[token_id].item()
-            scores.append(total)
+            except (AttributeError, TypeError, RuntimeError):
+                return None
+            past = output.past_key_values
+            if past is None:
+                return None
+            logprobs = torch.log_softmax(output.logits[:, -1].float(), dim=-1)
+            next_active: list[int] = []
+            next_rows: list[int] = []
+            for row, candidate_index in enumerate(active_indices):
+                continuation = continuations[candidate_index]
+                scores[candidate_index] += logprobs[row, continuation[offset]].item()
+                if len(continuation) > offset + 1:
+                    next_active.append(candidate_index)
+                    next_rows.append(row)
+            if next_rows:
+                past = self._select_cache(past, next_rows)
+            active_indices = next_active
         return scores
+
+    @staticmethod
+    def _repeat_cache(cache, batch_size: int):
+        if hasattr(cache, "batch_repeat_interleave"):
+            return cache.batch_repeat_interleave(batch_size)
+        if isinstance(cache, torch.Tensor):
+            return cache.repeat_interleave(batch_size, dim=0)
+        if isinstance(cache, tuple):
+            return tuple(LM._repeat_cache(value, batch_size) for value in cache)
+        if isinstance(cache, list):
+            return [LM._repeat_cache(value, batch_size) for value in cache]
+        raise TypeError("Cache does not support batch replication")
+
+    @staticmethod
+    def _select_cache(cache, rows: list[int]):
+        if hasattr(cache, "batch_select_indices"):
+            return cache.batch_select_indices(torch.tensor(rows))
+        if isinstance(cache, torch.Tensor):
+            return cache.index_select(0, torch.tensor(rows, device=cache.device))
+        if isinstance(cache, tuple):
+            return tuple(LM._select_cache(value, rows) for value in cache)
+        if isinstance(cache, list):
+            return [LM._select_cache(value, rows) for value in cache]
+        raise TypeError("Cache does not support batch selection")
 
     def _forward(
         self,

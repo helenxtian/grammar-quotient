@@ -85,7 +85,7 @@ def generate_actions(
     rng: random.Random | None = None,
     pending_token_budget: int = 1,
     phi_estimator: PhiEstimator | None = None,
-    use_prefix_cache: bool = True,
+    use_prefix_cache: bool = False,
 ) -> GenerationResult:
     """Generate a valid output by proposing and verifying grammar actions."""
     rng = rng or random.Random()

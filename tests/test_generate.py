@@ -60,7 +60,9 @@ def test_generate_actions_uses_prefix_cache_when_available():
     grammar = PhraseGrammar(name="generation", segments=(Literal("a"),))
 
     result = generate_actions(
-        LM(tokenizer=MergeTokenizer(), model=model, device="cpu"), grammar
+        LM(tokenizer=MergeTokenizer(), model=model, device="cpu"),
+        grammar,
+        use_prefix_cache=True,
     )
 
     assert result.text == "a"
