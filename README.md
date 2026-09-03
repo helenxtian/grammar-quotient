@@ -363,9 +363,10 @@ To compare the three decoder families on an enumerable grammar, run:
 Add `--prefix-cache` to measure the experimental cache path explicitly.
 
 The JSON report includes validity rate, conditional TV/KL to exact `p*`,
-target forward passes, and latency for unconstrained, token-masked, and
-grammar-action decoding. TV/KL are calculated over valid outputs; invalid
-outputs are retained in the separately reported validity rate.
+target forward passes, and latency for unconstrained, token-masked, padded
+action, cache action, and adaptive action decoding. TV/KL are calculated over
+valid outputs; invalid outputs are retained in the separately reported
+validity rate. Add `--output results/dialogue-100.json` to save the report.
 
 Finite phrase grammars can also include bounded open spans. The action engine
 then samples tokens until the span's explicit stop marker or token budget is

@@ -24,9 +24,11 @@ def test_decoder_benchmark_reports_all_methods_and_validity():
     assert [result["decoder"] for result in results] == [
         "unconstrained",
         "token_masked",
-        "grammar_actions",
+        "grammar_actions_padded",
+        "grammar_actions_cache",
+        "grammar_actions_adaptive",
     ]
     assert all(result["samples"] == 3 for result in results)
     assert results[1]["validity_rate"] == 1.0
-    assert results[2]["validity_rate"] == 1.0
+    assert all(result["validity_rate"] == 1.0 for result in results[2:])
     assert all(result["target_forward_passes"] > 0 for result in results)

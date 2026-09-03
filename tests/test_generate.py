@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import torch
 from test_online import FakeModel, MergeTokenizer
 
-from gqsd.generate import generate_actions
+from gqsd.generate import choose_cache_policy, generate_actions
 from gqsd.model import LM
 from gqsd.phrase_grammar import Choice, Literal, OpenSpan, PhraseGrammar, Slot
 
@@ -67,6 +67,11 @@ def test_generate_actions_uses_prefix_cache_when_available():
 
     assert result.text == "a"
     assert model.calls == 2
+
+
+def test_adaptive_cache_policy_requires_deep_branches():
+    assert not choose_cache_policy(3, [1, 2, 2])
+    assert choose_cache_policy(20, [4, 4])
 
 
 class OpenTokenizer:

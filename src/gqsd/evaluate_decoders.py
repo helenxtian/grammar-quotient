@@ -64,13 +64,18 @@ def run_decoder_benchmark(
     samples: int,
     seed: int,
     max_tokens: int,
-    use_prefix_cache: bool = True,
+    use_prefix_cache: bool = False,
 ) -> list[dict[str, Any]]:
     if samples <= 0:
         raise ValueError("Sample count must be positive")
     if max_tokens < 0:
         raise ValueError("Maximum token count must be nonnegative")
 
+    action_modes = [
+        ("grammar_actions_padded", "padded"),
+        ("grammar_actions_cache", "cache"),
+        ("grammar_actions_adaptive", "adaptive"),
+    ]
     methods: list[tuple[str, Callable[[random.Random], str | None]]] = [
         (
             "unconstrained",
@@ -82,13 +87,16 @@ def run_decoder_benchmark(
                 lm, "", grammar.start(), max_tokens, rng=rng
             ),
         ),
-        (
-            "grammar_actions",
-            lambda rng: generate_actions(
-                lm, grammar, rng=rng, use_prefix_cache=use_prefix_cache
-            ).text,
-        ),
     ]
+    methods.extend(
+        (
+            name,
+            lambda rng, policy=policy: generate_actions(
+                lm, grammar, rng=rng, use_prefix_cache=use_prefix_cache, cache_policy=policy
+            ).text,
+        )
+        for name, policy in action_modes
+    )
     results = []
     for name, decode in methods:
         outputs: list[str | None] = []
@@ -118,7 +126,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--samples", type=int, default=100)
     parser.add_argument("--max-tokens", type=int, default=128)
     parser.add_argument("--seed", type=int, default=20260828)
-    parser.add_argument("--prefix-cache", action="store_true")
+    parser.add_argument("--prefix-cache", action="store_true", help="Enable cache mode for legacy runs")
+    parser.add_argument("--output", type=Path, help="Write the JSON report to this path")
     parser.add_argument("--local-files-only", action="store_true")
     args = parser.parse_args(argv)
 
@@ -149,7 +158,11 @@ def main(argv: list[str] | None = None) -> int:
             use_prefix_cache=args.prefix_cache,
         ),
     }
-    print(json.dumps(result, indent=2))
+    report = json.dumps(result, indent=2)
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(report + "\n", encoding="utf-8")
+    print(report)
     return 0
 
 

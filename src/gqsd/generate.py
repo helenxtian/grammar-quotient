@@ -49,6 +49,20 @@ def _uniform(keys: list[str]) -> dict[str, float]:
     return {key: probability for key in keys}
 
 
+def choose_cache_policy(
+    prefix_length: int, verification_lengths: list[int]
+) -> bool:
+    """Choose cache scoring only when branch work beats padded scoring clearly."""
+    if len(verification_lengths) < 2:
+        return False
+    padded_work = sum(prefix_length + length for length in verification_lengths)
+    cache_work = prefix_length + sum(
+        sum(length > offset for length in verification_lengths)
+        for offset in range(max(verification_lengths))
+    )
+    return max(verification_lengths) >= 4 and cache_work * 1.5 < padded_work
+
+
 def _sample_open_span(
     lm: LM,
     prompt: str,
@@ -86,6 +100,7 @@ def generate_actions(
     pending_token_budget: int = 1,
     phi_estimator: PhiEstimator | None = None,
     use_prefix_cache: bool = False,
+    cache_policy: str | None = None,
 ) -> GenerationResult:
     """Generate a valid output by proposing and verifying grammar actions."""
     rng = rng or random.Random()
@@ -130,8 +145,19 @@ def generate_actions(
             ([*frontier.committed_ids], list(candidate.verification_ids))
             for candidate in candidates
         ]
+        if cache_policy is not None and cache_policy not in {"padded", "cache", "adaptive"}:
+            raise ValueError("Cache policy must be padded, cache, or adaptive")
+        use_cache = use_prefix_cache
+        if cache_policy == "cache":
+            use_cache = True
+        elif cache_policy == "padded":
+            use_cache = False
+        elif cache_policy == "adaptive":
+            use_cache = choose_cache_policy(
+                len(examples[0][0]), [len(verification) for _, verification in examples]
+            )
         scores = None
-        if use_prefix_cache:
+        if use_cache:
             scores = lm.batch_sequence_logprobs_with_prefix_cache(
                 examples[0][0], [verification for _, verification in examples]
             )
