@@ -128,7 +128,11 @@ def run_exactness_benchmark(
             outputs.append(output)
             forwards.append(lm.target_forward_passes)
             latencies.append(time.perf_counter() - started)
-        results.append(_summary(name, outputs, oracle, forwards, latencies))
+        summary = _summary(name, outputs, oracle, forwards, latencies)
+        if name == "grammar_actions_beam_phi":
+            summary["phi_score_batches"] = beam_phi.score_batches
+            summary["phi_scored_texts"] = beam_phi.scored_texts
+        results.append(summary)
     return results
 
 

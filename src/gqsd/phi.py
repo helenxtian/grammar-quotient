@@ -211,6 +211,8 @@ class BeamPhiEstimator(PhiEstimator):
     _text_logprob_cache: dict[str, float] = field(
         default_factory=dict, init=False, repr=False
     )
+    score_batches: int = field(default=0, init=False)
+    scored_texts: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         if self.beam_size <= 0:
@@ -247,6 +249,8 @@ class BeamPhiEstimator(PhiEstimator):
         scores = self.lm.batch_text_logprobs(
             "", ordered_texts, batch_size=self.score_batch_size
         )
+        self.score_batches += math.ceil(len(ordered_texts) / self.score_batch_size)
+        self.scored_texts += len(ordered_texts)
         self._text_logprob_cache = dict(zip(ordered_texts, scores, strict=True))
 
     def estimate(self, state: PhraseState) -> PhiEstimate:

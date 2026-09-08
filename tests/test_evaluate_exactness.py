@@ -26,3 +26,6 @@ def test_exactness_benchmark_reports_control_and_phi_rows():
         "token_masked",
     ]
     assert all(result["validity_rate"] == 1.0 for result in results)
+    beam_result = results[3]
+    assert beam_result["phi_score_batches"] >= 0
+    assert beam_result["phi_scored_texts"] >= 0

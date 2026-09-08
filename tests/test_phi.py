@@ -96,6 +96,20 @@ def test_beam_estimator_batches_each_expansion_layer():
     assert lm.target_forward_passes == 1
 
 
+def test_beam_estimator_reports_shared_text_score_work():
+    grammar = _grammar()
+    lm = _lm()
+    estimator = BeamPhiEstimator(lm, grammar, beam_size=2, score_batch_size=2)
+    state = grammar.start().advance(grammar.start().actions()[0], "a")
+
+    estimator.estimate(state)
+
+    assert estimator.scored_texts > 0
+    assert estimator.score_batches == math.ceil(
+        estimator.scored_texts / estimator.score_batch_size
+    )
+
+
 def test_small_beam_reports_pruning_and_never_returns_more_than_retained_mass():
     grammar = _grammar()
     lm = _lm()
