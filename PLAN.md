@@ -69,8 +69,9 @@ quotient sampler provably hit `p*`?*
       cache cloning falls back to the regular padded batch scorer
 - [ ] Measure and tune an adaptive cache policy; on the first pinned CPU
       dialogue run, cache reduced context work but increased wall-clock time
-- [ ] Optimize beam-Phi scoring with shared-prefix batching/cache reuse before
-      making an online faithfulness or speed claim
+- [x] Optimize beam-Phi scoring by reusing shared canonical text scores;
+      dialogue beam-8 latency fell from 2.121s to 1.515s/sample with unchanged
+      TV in the paired 20-sample run
 
 ## Phase 5 - Usable generation surface
 - [x] Reusable `generate_actions` engine with action trace and counters

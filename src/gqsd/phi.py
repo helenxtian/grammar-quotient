@@ -259,6 +259,7 @@ class BeamPhiEstimator(PhiEstimator):
             result = PhiEstimate(0.0, 1, 0, 0)
             self._estimate_cache[state] = result
             return result
+        self._ensure_text_scores()
 
         frontier: list[tuple[PhraseState, float]] = [(state, 0.0)]
         completed: list[float] = []
@@ -279,19 +280,10 @@ class BeamPhiEstimator(PhiEstimator):
                         expanded_paths += 1
             if not edges:
                 break
-            texts = {
-                text
-                for current, realization, _, _ in edges
-                for text in (current.text, current.text + realization)
-            }
-            scores = self.lm.batch_text_logprobs(
-                "", texts, batch_size=self.score_batch_size
-            )
-            text_logprobs = dict(zip(texts, scores, strict=True))
             for current, realization, next_state, path_logprob in edges:
-                logprob = text_logprobs[current.text + realization]
+                logprob = self._text_logprob_cache[current.text + realization]
                 if current.text:
-                    logprob -= text_logprobs[current.text]
+                    logprob -= self._text_logprob_cache[current.text]
                 next_frontier.append((next_state, path_logprob + logprob))
             next_frontier.sort(key=lambda item: item[1], reverse=True)
             pruned_paths += max(0, len(next_frontier) - self.beam_size)

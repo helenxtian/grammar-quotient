@@ -358,6 +358,13 @@ This is evidence that the bounded estimator tracks the exact control, not a
 speedup result. Its repeated future-branch scoring is the next optimization
 target.
 
+The first optimization now reuses the estimator's shared canonical text-score
+cache during beam rollout instead of rescoring each expansion layer. On a
+paired 20-sample dialogue run with beam size 8, TV remained `0.1107`, while
+target forwards fell from `6.95` to `5.20` per sample and latency fell from
+`2.121` to `1.515` seconds per sample. This is a bounded CPU result; the
+report and code/docstring grammars still need the same paired measurement.
+
 ### Approximate online future validity
 
 `gqsd.phi.BeamPhiEstimator` estimates `Phi(u)` by expanding grammar action
