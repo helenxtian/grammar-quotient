@@ -34,6 +34,37 @@ class PhiEstimator:
         raise NotImplementedError
 
 
+@dataclass
+class ExactPhiEstimator(PhiEstimator):
+    """Exact finite-language future validity from a precomputed oracle."""
+
+    oracle: FiniteGrammarOracle
+    lm: LM
+    _text_logprob_cache: dict[str, float] = field(default_factory=dict, init=False)
+
+    def __post_init__(self) -> None:
+        self._text_logprob_cache[""] = self.lm.text_logprob("", "")
+
+    def _text_logprob(self, text: str) -> float:
+        cached = self._text_logprob_cache.get(text)
+        if cached is None:
+            cached = self.lm.text_logprob("", text)
+            self._text_logprob_cache[text] = cached
+        return cached
+
+    def estimate(self, state: PhraseState) -> PhiEstimate:
+        if state.grammar is not self.oracle.grammar:
+            raise ValueError("State does not belong to this oracle's grammar")
+        if state.is_accepting():
+            return PhiEstimate(0.0, 1, 0, 0)
+        log_mass = self.oracle.completion_logmass(state) - self._text_logprob(state.text)
+        return PhiEstimate(log_mass, 0, 0, 0)
+
+    def edge_logprob(self, state: PhraseState, realization: str) -> float:
+        next_text = state.text + realization
+        return self._text_logprob(next_text) - self._text_logprob(state.text)
+
+
 @dataclass(frozen=True)
 class PhiComparison:
     """State-level error summary against an exact finite-grammar oracle."""

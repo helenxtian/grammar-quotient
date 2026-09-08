@@ -42,6 +42,11 @@ quotient sampler provably hit `p*`?*
       50 vs. 227 calls and 13.94s vs. 36.50s over 10 dialogue samples
 - [x] Add deterministic beam-based online `Phi` estimation/correction; expose
       state-level log-ratio and support-loss comparison against the exact oracle
+- [x] Add an exact finite-language `Phi` control and discriminator evaluator;
+      fixed-seed Qwen runs show that future-validity weighting is the dominant
+      first-order source of action-sampler TV error
+- [x] Compare exact-Phi and beam-Phi action sampling on dialogue, reports, and
+      code/docstrings; beam size 8 matched exact-Phi TV in the bounded runs
 
 ## Phase 4 — Scale + evaluation
 - [x] Bounded tool-call JSON and enum-heavy structured outputs
@@ -64,6 +69,8 @@ quotient sampler provably hit `p*`?*
       cache cloning falls back to the regular padded batch scorer
 - [ ] Measure and tune an adaptive cache policy; on the first pinned CPU
       dialogue run, cache reduced context work but increased wall-clock time
+- [ ] Optimize beam-Phi scoring with shared-prefix batching/cache reuse before
+      making an online faithfulness or speed claim
 
 ## Phase 5 - Usable generation surface
 - [x] Reusable `generate_actions` engine with action trace and counters
@@ -73,6 +80,8 @@ quotient sampler provably hit `p*`?*
       and latency metrics
 - [x] Bounded open-span fallback with token-level stop-marker decoding
 - [ ] Add CLI generation command and common benchmark report
+- [x] Add reproducible exactness diagnostic for oracle, no-Phi, exact-Phi, and
+      token-masked decoding
 
 ## Current implementation note
 

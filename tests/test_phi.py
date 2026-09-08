@@ -9,13 +9,31 @@ from gqsd.online import sample_online_actions
 from gqsd.oracle import FiniteGrammarOracle
 from gqsd.phi import (
     BeamPhiEstimator,
+    ExactPhiEstimator,
     approximate_quotient_distribution,
     compare_phi,
     distribution_kl,
     distribution_tv,
     finite_horizon_tv_bound,
+    reachable_states,
 )
 from gqsd.phrase_grammar import Choice, Literal, PhraseGrammar, Slot
+
+
+def test_exact_phi_estimator_matches_oracle_states():
+    grammar = PhraseGrammar(
+        name="exact-phi",
+        segments=(Slot("value", (Choice("ab", ("ab",)), Choice("ac", ("ac",)))),),
+    )
+    model = LM(tokenizer=MergeTokenizer(), model=FakeModel(), device="cpu")
+    oracle = FiniteGrammarOracle.from_lm(grammar, model)
+    estimator = ExactPhiEstimator(oracle, model)
+
+    for state in reachable_states(grammar):
+        expected = 0.0 if state.is_accepting() else (
+            oracle.completion_logmass(state) - model.text_logprob("", state.text)
+        )
+        assert abs(estimator.estimate(state).log_mass - expected) < 1e-9
 
 
 class StableTokenizer(MergeTokenizer):

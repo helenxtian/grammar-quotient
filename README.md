@@ -318,6 +318,46 @@ sequence mass over the current grammar realizations, while token mode performs
 standard local next-token masking. Without an online future-validity term
 `Phi`, neither comparison establishes exact preservation of `p(w | w in L)`.
 
+### Exactness discriminator
+
+The repository includes a separate diagnostic that compares exact quotient
+sampling, local grammar-action sampling without future validity, grammar-action
+sampling with an exact finite-oracle `Phi`, and token masking:
+
+```bash
+.venv/bin/python -m gqsd.evaluate_exactness \
+   grammars/dialogue_phrases.json \
+   --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
+   --local-files-only --samples 20 \
+   --output results/dialogue-exactness-20.json
+```
+
+The exact-Phi row is a finite-language control, not a scalable decoding
+method. In fixed-seed 20-sample Qwen runs, enabling exact Phi reduced action
+TV from 0.9529 to 0.1107 on dialogue, from 0.3962 to 0.3082 on reports, and
+from 0.6991 to 0.0978 on code/docstrings. Every constrained method remained
+100% valid. This identifies missing future-validity weighting as the dominant
+first-order source of the earlier action-sampler bias, while leaving a
+residual tokenizer/normalization gap for further investigation.
+
+The same diagnostic can use the bounded beam estimator with `--beam-size 8`:
+
+```bash
+.venv/bin/python -m gqsd.evaluate_exactness \
+   grammars/dialogue_phrases.json \
+   --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
+   --local-files-only --samples 20 --beam-size 8 \
+   --output results/dialogue-exactness-beam8-20.json
+```
+
+On fixed-seed 20-sample runs, beam Phi size 8 matched exact-Phi TV on all
+three tested grammars: dialogue `0.1107`, reports `0.3082`, and
+code/docstrings `0.0978`. It preserved `100%` validity, but it was much more
+expensive on CPU: `2.12`, `6.63`, and `10.28` seconds per sample respectively.
+This is evidence that the bounded estimator tracks the exact control, not a
+speedup result. Its repeated future-branch scoring is the next optimization
+target.
+
 ### Approximate online future validity
 
 `gqsd.phi.BeamPhiEstimator` estimates `Phi(u)` by expanding grammar action
