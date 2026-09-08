@@ -359,11 +359,19 @@ speedup result. Its repeated future-branch scoring is the next optimization
 target.
 
 The first optimization now reuses the estimator's shared canonical text-score
-cache during beam rollout instead of rescoring each expansion layer. On a
-paired 20-sample dialogue run with beam size 8, TV remained `0.1107`, while
-target forwards fell from `6.95` to `5.20` per sample and latency fell from
-`2.121` to `1.515` seconds per sample. This is a bounded CPU result; the
-report and code/docstring grammars still need the same paired measurement.
+cache during beam rollout instead of rescoring each expansion layer. On paired
+20-sample CPU runs with beam size 8, TV was unchanged while target work and
+latency fell across all three tested grammars:
+
+| Grammar | TV | Forwards/sample before -> after | Seconds/sample before -> after |
+|---|---:|---:|---:|
+| Dialogue | 0.1107 | 6.95 -> 5.20 | 2.121 -> 1.515 |
+| Reports | 0.3082 | 8.00 -> 5.90 | 6.633 -> 2.121 |
+| Code/docstrings | 0.0978 | 13.25 -> 8.45 | 10.277 -> 5.021 |
+
+These are bounded CPU measurements, not production throughput claims. The
+paired results support caching the canonical text scores, but not yet a
+general KV-cache or accelerator speedup claim.
 
 ### Approximate online future validity
 

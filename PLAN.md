@@ -70,8 +70,8 @@ quotient sampler provably hit `p*`?*
 - [ ] Measure and tune an adaptive cache policy; on the first pinned CPU
       dialogue run, cache reduced context work but increased wall-clock time
 - [x] Optimize beam-Phi scoring by reusing shared canonical text scores;
-      dialogue beam-8 latency fell from 2.121s to 1.515s/sample with unchanged
-      TV in the paired 20-sample run
+      beam-8 latency fell with unchanged TV in paired 20-sample runs for
+      dialogue, reports, and code/docstrings
 
 ## Phase 5 - Usable generation surface
 - [x] Reusable `generate_actions` engine with action trace and counters
