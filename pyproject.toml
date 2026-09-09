@@ -16,6 +16,9 @@ dependencies = [
     "numpy>=1.26",
 ]
 
+[project.scripts]
+gqsd-generate = "gqsd.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",

@@ -80,7 +80,7 @@ quotient sampler provably hit `p*`?*
 - [x] Common decoder benchmark with validity, TV/KL-to-oracle, target work,
       and latency metrics
 - [x] Bounded open-span fallback with token-level stop-marker decoding
-- [ ] Add CLI generation command and common benchmark report
+- [x] Add CLI generation command and common benchmark report
 - [x] Add reproducible exactness diagnostic for oracle, no-Phi, exact-Phi, and
       token-masked decoding
 

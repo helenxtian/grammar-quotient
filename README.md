@@ -423,6 +423,19 @@ action, cache action, and adaptive action decoding. TV/KL are calculated over
 valid outputs; invalid outputs are retained in the separately reported
 validity rate. Add `--output results/dialogue-100.json` to save the report.
 
+To generate one sample with an action trace and JSON counters, use the
+single-sample CLI:
+
+```bash
+.venv/bin/gqsd-generate grammars/dialogue_phrases.json \
+   --revision 060db6499f32faf8b98477b0a26969ef7d8b9987 \
+   --local-files-only --mode grammar_actions --cache-policy padded
+```
+
+Available modes are `unconstrained`, `token_masked`, `grammar_actions`,
+`exact_phi`, and `beam_phi`. Grammar-action modes accept `padded`, `cache`, or
+`adaptive` cache policies; `--output` writes the same JSON report to disk.
+
 Finite phrase grammars can also include bounded open spans. The action engine
 then samples tokens until the span's explicit stop marker or token budget is
 reached. These hybrid outputs are not finite-oracle samples, so exact `p*`
